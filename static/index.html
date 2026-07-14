@@ -1827,7 +1827,8 @@ class Component extends DCLogic {
       watching: { label: 'WATCHING MAIN…', fg: '#00bcff', anim: 'su-pulse 1.4s ease-in-out infinite' },
       ready: { label: 'READY FOR LAUNCH', fg: '#fdc700', anim: 'su-pulse 1.2s ease-in-out infinite' },
       building: { label: 'IN FLIGHT', fg: '#00bcff', anim: 'su-pulse 1s ease-in-out infinite' },
-      live: { label: 'HEALTHY', fg: '#00ff6f', anim: 'none' }
+      live: { label: 'HEALTHY', fg: '#00ff6f', anim: 'none' },
+      failed: { label: 'LAUNCH FAILED', fg: '#fb2c37', anim: 'su-pulse 1.2s ease-in-out infinite' }
     }[a.status] || { label: a.status, fg: '#9fafbc', anim: 'none' };
   }
 

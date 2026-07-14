@@ -39,26 +39,41 @@
   };
 
   const phaseToStatus = (p) =>
-    p === "Live" ? "live" : p === "Failed" ? "ready" : p ? "building" : "watching";
+    p === "Live" ? "live" : p === "Failed" ? "failed" : p ? "building" : "watching";
 
-  const appToGame = (a, planetId) => ({
-    id: "app:" + a.name,
-    name: a.app_name || a.name,
-    repo: a.repo_name || "",
-    branch: a.branch || "main",
-    cpu: 1,
-    mem: 1,
-    replicas: a.replicas || 1,
-    planetId,
-    status: phaseToStatus(a.status && a.status.phase),
-    bg: false,
-    launched: (a.status && a.status.phase) === "Live",
-    createdAt: Date.now(),
-    history: [],
-    checks: 0,
-    deploys: 1,
-    url: ((a.status && a.status.url) || "").replace("https://", ""),
-  });
+  // Place a rocket on the planet whose zone it actually deploys to, not the
+  // first one — the deploy destination must be truthful.
+  const planetForZone = (planets, zoneRef) =>
+    (zoneRef && planets.find((p) => p.id === "zone:" + zoneRef)) || planets[0] || null;
+
+  const appToGame = (a, planets) => {
+    const st = a.status || {};
+    const planet = planetForZone(planets, a.zone_ref);
+    const buildRef = st.last_build_ref || st.build_sha || "";
+    return {
+      id: "app:" + a.name,
+      name: a.app_name || a.name,
+      repo: a.repo_name || "",
+      branch: a.branch || "main",
+      cpu: 1,
+      mem: 1,
+      replicas: a.replicas || 1,
+      planetId: planet ? planet.id : "",
+      status: phaseToStatus(st.phase),
+      bg: false,
+      launched: st.phase === "Live",
+      createdAt: Date.now(),
+      history: [],
+      checks: 0,
+      deploys: 1,
+      url: (st.url || "").replace("https://", ""),
+      // real platform detail the game's rocket-detail card already renders
+      commit: buildRef ? String(buildRef).slice(0, 7) : "",
+      imageSha: st.image || "",
+      msg: st.message || "",
+      lastLaunch: st.phase === "Live" ? Date.now() : null,
+    };
+  };
 
   const heroFromCharacter = (c, game) => {
     const ap = c.appearance || {};
@@ -103,10 +118,7 @@
         (p) => !planets.some((sp) => sp.name === p.name),
       );
       const allPlanets = planets.concat(keepLocal);
-      const defaultPlanet = allPlanets[0];
-      const gameApps = appList.map((a) =>
-        appToGame(a, defaultPlanet ? defaultPlanet.id : ""),
-      );
+      const gameApps = appList.map((a) => appToGame(a, allPlanets));
 
       const patch = {
         planets: allPlanets,
@@ -252,15 +264,27 @@
           const gameApps = game.state.apps.map((ga) => {
             const real = byName.get(ga.name);
             if (!real) return ga;
-            const status = phaseToStatus(real.status && real.status.phase);
-            const url = ((real.status && real.status.url) || "").replace("https://", "");
+            const st = real.status || {};
+            const status = phaseToStatus(st.phase);
+            const url = (st.url || "").replace("https://", "");
+            const buildRef = st.last_build_ref || st.build_sha || "";
+            // surface a genuine failure the moment it happens — never hide it
+            if (status === "failed" && ga.status !== "failed" && game.showToast) {
+              game.showToast(
+                "LAUNCH FAILED",
+                (ga.name + " — " + (st.message || "the platform reported a failure")).toUpperCase(),
+              );
+            }
             // never interrupt the cinematic; it settles on its own
             if (game.state.launch && game.state.launch.appId === ga.id) return ga;
-            if (ga.status === status && (!url || ga.url === url)) return ga;
             return Object.assign({}, ga, {
               status,
               url: url || ga.url,
               launched: ga.launched || status === "live",
+              commit: buildRef ? String(buildRef).slice(0, 7) : ga.commit,
+              imageSha: st.image || ga.imageSha,
+              msg: st.message || ga.msg,
+              lastLaunch: status === "live" && !ga.lastLaunch ? Date.now() : ga.lastLaunch,
             });
           });
           game.setState({ apps: gameApps });
