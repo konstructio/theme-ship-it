@@ -169,7 +169,8 @@
               const name = full.split("/").pop();
               if (!name || seen[name]) return null;
               seen[name] = true;
-              return { v: name, label: name + " \u00b7 from your apps" };
+              // carry the full identity so shipApp never guesses a host/org
+              return { v: full, label: name + " \u00b7 from your apps", url: a.repo_url || "" };
             })
             .filter(Boolean);
         }
@@ -221,12 +222,21 @@
       const repo = (r.repo || "").trim();
       origRegister();
       if (!name || !repo) return;
-      const repoUrl = repo.includes("://") ? repo : GIT_BASE + repo;
+      const picked = (game.REPOS || []).find((x) => x.v === repo) || {};
+      const repoUrl = picked.url || (repo.includes("://") ? repo : repo.includes("/") ? "" : GIT_BASE + repo);
       const repoName = repo.includes("://")
         ? repo.replace(/^https?:\/\/[^/]+\//, "").replace(/\.git$/, "")
-        : "konstructio/" + repo;
+        : repo.includes("/")
+          ? repo
+          : "konstructio/" + repo;
       const planet = game.state.planets.find((p) => p.id === r.planetId);
-      const zoneRef = planet && planet.id && planet.id.startsWith("zone:") ? planet.id.slice(5) : "";
+      // never ship zoneless: fall back to the first real zone so the platform
+      // can always resolve a target cluster
+      const zonePlanet =
+        planet && planet.id && planet.id.startsWith("zone:")
+          ? planet
+          : game.state.planets.find((p) => p.id && p.id.startsWith("zone:"));
+      const zoneRef = zonePlanet ? zonePlanet.id.slice(5) : "";
       kontract
         .shipApp({
           namespace: org,
