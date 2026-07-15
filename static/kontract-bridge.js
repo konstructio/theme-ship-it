@@ -176,7 +176,7 @@
     // ── claim/buy planet -> zone ────────────────────────────────────
     const origClaim = game.claimPlanet.bind(game);
     game.claimPlanet = function () {
-      const d = this.state.planetDraft;
+      const d = game.state.planetDraft;
       origClaim();
       const name = (d.name || "").toLowerCase().replace(/[^a-z0-9-]/g, "-");
       if (!name) return;
@@ -188,8 +188,8 @@
         })
         .catch((e) => {
           if (!(e && e.status === 409)) {
-            this.showToast &&
-              this.showToast("ZONE SYNC FAILED", "The platform rejected this planet: " + (e.message || e));
+            game.showToast &&
+              game.showToast("ZONE SYNC FAILED", "The platform rejected this planet: " + (e.message || e));
           }
         });
     };
@@ -197,7 +197,7 @@
     // ── register app -> real KontractApp ──────────────────────────────
     const origRegister = game.submitRegister.bind(game);
     game.submitRegister = function () {
-      const r = this.state.reg;
+      const r = game.state.reg;
       const name = (r.name || "").toLowerCase().replace(/[^a-z0-9-]/g, "-");
       const repo = (r.repo || "").trim();
       origRegister();
@@ -206,7 +206,7 @@
       const repoName = repo.includes("://")
         ? repo.replace(/^https?:\/\/[^/]+\//, "").replace(/\.git$/, "")
         : "konstructio/" + repo;
-      const planet = this.state.planets.find((p) => p.id === r.planetId);
+      const planet = game.state.planets.find((p) => p.id === r.planetId);
       const zoneRef = planet && planet.id && planet.id.startsWith("zone:") ? planet.id.slice(5) : "";
       kontract
         .shipApp({
@@ -223,8 +223,8 @@
           size: "s",
         })
         .catch((e) => {
-          this.showToast &&
-            this.showToast("SHIP SYNC FAILED", "Platform refused the app: " + (e.message || e));
+          game.showToast &&
+            game.showToast("SHIP SYNC FAILED", "Platform refused the app: " + (e.message || e));
         });
     };
 
@@ -234,7 +234,7 @@
     const origSetReplicas = game.setReplicas.bind(game);
     game.setReplicas = function (id, d) {
       origSetReplicas(id, d);
-      const ga = this.state.apps.find((a) => a.id === id);
+      const ga = game.state.apps.find((a) => a.id === id);
       const name = realName(ga);
       if (name && ga) {
         kontract.updateApp(org, name, { replicas: ga.replicas }).catch(() => {});
@@ -243,7 +243,7 @@
 
     const origStartLaunch = game.startLaunch.bind(game);
     game.startLaunch = function (appId) {
-      const ga = this.state.apps.find((a) => a.id === appId);
+      const ga = game.state.apps.find((a) => a.id === appId);
       const name = realName(ga);
       origStartLaunch(appId);
       // relaunching an already-delivered app is a real redeploy; first
