@@ -994,8 +994,8 @@ class Component extends DCLogic {
     this.ORG = 'GG ORGANIZATION'; this.ORG_TAG = 'GG';
     this.ROCKET_TIERS = [
       { id: 'rust', name: 'RUSTBUCKET', price: 0, note: 'Trusty starter ship. Smells like cache.', colors: {} },
-      { id: 'swift', name: 'SWIFT MK-II', price: 12, note: '20% faster builds · ' + this.ORG_TAG + ' livery on the hull', colors: { g: '#00bcff', G: '#0069a8', b: '#a2f4fd' } },
-      { id: 'flag', name: 'GOLD FLAGSHIP', price: 25, note: '+25 XP sponsor bonus per launch · ' + this.ORG_TAG + ' livery', colors: { g: '#fdc700', G: '#e17100', b: '#fef9c2', m: '#ffd230' } }
+      { id: 'swift', name: 'SWIFT MK-II', price: 1, note: '20% faster builds · ' + this.ORG_TAG + ' livery on the hull', colors: { g: '#00bcff', G: '#0069a8', b: '#a2f4fd' } },
+      { id: 'flag', name: 'GOLD FLAGSHIP', price: 33, note: '+25 XP sponsor bonus per launch · ' + this.ORG_TAG + ' livery', colors: { g: '#fdc700', G: '#e17100', b: '#fef9c2', m: '#ffd230' } }
     ];
     this.POD_SLOTS = [[52, 44], [132, 58], [84, 118], [162, 124], [44, 158], [120, 172]];
     this.THRESHOLDS = [100, 300, 600, 1000, 1500, 2200, 3000, 4200, 6000];
@@ -1545,12 +1545,9 @@ class Component extends DCLogic {
     this.completeQuest('q6');
     this.later(() => this.persist(), 100);
   };
-  buySupport = () => {
-    this.beep('buy');
-    this.setState({ billItems: [...this.state.billItems, { label: 'SOLIDARITY · FREE JOHN DIETZ', amt: 1, once: true }] });
-    this.showToast("YOU'RE A REAL ONE", 'Your $1 goes straight to the "John did nothing wrong" fund.', '#fdc700');
-    this.completeQuest('q6');
-    this.later(() => this.persist(), 100);
+  bookDonna = () => {
+    this.beep('coin');
+    this.showToast('COFFEE INCOMING', "Opening the calendar in a new tab — Donna will bring the platform talk.", '#00ff6f');
   };
   bookDietz = () => {
     this.beep('coin');
@@ -2191,10 +2188,10 @@ class Component extends DCLogic {
         { name: 'SMALL PLANET', desc: '10 CPU · 10 GB. Cozy starter world.', price: '$8/MO', iconBs: S.planetShadow(1, 2.4), buy: () => this.buyPlanet('SMALL', 10, 10, 8) },
         { name: 'MEDIUM PLANET', desc: '20 CPU · 20 GB. Room for a fleet.', price: '$15/MO', iconBs: S.planetShadow(4, 2.9), buy: () => this.buyPlanet('MEDIUM', 20, 20, 15) },
         { name: 'PLANET UPGRADE', desc: '+10 CPU · +10 GB on your first world.', price: '$7/MO', iconBs: S.shadow(S.POD.rows, S.POD.colors, 5, 0, 0), buy: this.buyUpgrade },
-        { name: 'SWIFT MK-II', desc: '20% faster builds. ' + this.ORG_TAG + ' livery on the hull.', price: '$12/MO', iconBs: S.shadow(S.ROCKET.rows, this.rocketColors('swift'), 2.4, 0, 0), buy: () => this.buyRocket('swift') },
-        { name: 'GOLD FLAGSHIP', desc: '+25 XP sponsor bonus per launch. Shiny.', price: '$25/MO', iconBs: S.shadow(S.ROCKET.rows, this.rocketColors('flag'), 2.4, 0, 0), buy: () => this.buyRocket('flag') },
+        { name: 'SWIFT MK-II', desc: '20% faster builds. ' + this.ORG_TAG + ' livery on the hull.', price: '$1/MO', iconBs: S.shadow(S.ROCKET.rows, this.rocketColors('swift'), 2.4, 0, 0), buy: () => this.buyRocket('swift') },
+        { name: 'GOLD FLAGSHIP', desc: '+25 XP sponsor bonus per launch. Shiny.', price: '$33/MO', iconBs: S.shadow(S.ROCKET.rows, this.rocketColors('flag'), 2.4, 0, 0), buy: () => this.buyRocket('flag') },
         { name: 'MEET JOHN DIETZ', desc: 'One meeting with the Konstruct cofounder. Best deal in the galaxy.', price: '$0', iconBs: '', img: 'uploads/johndietz-pixel.png', buy: this.bookDietz, href: 'https://ro.am/johndietz/book-me', cta: 'BOOK' },
-        { name: 'FREE JOHN DIETZ', desc: 'Show your support — help get John out of trouble for adding a video game to Konstruct.', price: '$1', iconBs: S.shadow(S.STAR.rows, { g: '#fdc700', w: '#fef9c2' }, 6, 0, 0), buy: this.buySupport },
+        { name: 'COFFEE WITH DONNA', desc: 'Grab a coffee and talk platform with Donna. Bring your own mug.', price: '$0', iconBs: '', img: 'uploads/coffee-pixel.png', buy: this.bookDonna, href: 'https://ro.am/johndietz/book-me', cta: 'BOOK' },
         { name: 'KONSTRUCT CREW · 5 HRS', desc: 'Five hours with the Konstruct team. Real humans, real expertise.', price: '$1,000', iconBs: S.shadow(S.COIN.rows, S.COIN.colors, 5, 0, 0), buy: this.buyHours, href: 'https://www.civo.com/konstruct#contact', locked: s.level < 5, lockNote: 'LV 5 REQUIRED' }
       ].map(i => Object.assign({ lockNote: '' }, i, {
         cta: i.cta || 'BUY',
