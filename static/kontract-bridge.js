@@ -158,7 +158,11 @@
             return name ? { v: name, label: name + (r.namespace ? " \u00b7 " + r.namespace : "") } : null;
           })
           .filter(Boolean);
-        if (list.length) game.REPOS = list;
+        // Launched mode never shows the prototype's fake repos: an empty org
+        // gets an honest pointer at the real fix instead.
+        game.REPOS = list.length
+          ? list
+          : [{ v: "", label: "no repos yet \u00b7 register in Konstruct \u2192 App repositories" }];
       })
       .catch(() => {});
 
