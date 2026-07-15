@@ -1216,6 +1216,13 @@ class Component extends DCLogic {
       return;
     }
     this.beep('go');
+    // Real zone backends: when the org already has planets (zones seeded by
+    // the bridge), skip the forced first-planet step and go straight to HQ.
+    if (this.state.planets.length) {
+      this.setState({ screen: 'hq' });
+      this.later(() => this.persist(), 100);
+      return;
+    }
     this.setState({ screen: 'planet', planetMode: 'onboard', planetDraft: { name: this.randOf(this.PLANET_SUGGESTIONS), look: Math.floor(Math.random() * 5), cpu: 10, mem: 10, cost: 0, cls: 'SMALL' } });
   };
 
