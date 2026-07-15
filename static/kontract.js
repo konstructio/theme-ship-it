@@ -1,62 +1,63 @@
 /*
  * kontract.js — the whole client contract in one small file. Copy it, keep it.
  *
- * 1. Auth handshake: the platform launcher opens your theme with the signed-in
- *    user's bearer token in the URL fragment. Read it, scrub the address bar,
- *    keep it in sessionStorage, send it on every call.
- * 2. Discovery first: /kontract/discovery/{org} tells you capabilities, the
- *    band catalog, and rates. Never hardcode any of that.
+ * Your theme never sees a credential. When launched from Konstruct it runs in
+ * a sandboxed iframe and sends each operation to the platform window over
+ * postMessage; Konstruct validates the request, makes the API call with the
+ * user's session on its own origin, and posts the result back. Standalone
+ * (opened directly, no parent), isLaunched() is false — render your welcome
+ * or sample-data mode.
  */
 
 const kontract = (() => {
-  function takeFromFragment() {
-    const t = location.hash.match(/[#&]token=([^&]+)/);
-    const a = location.hash.match(/[#&]api=([^&]+)/);
-    if (t) sessionStorage.setItem("kontract.token", decodeURIComponent(t[1]));
-    if (a) sessionStorage.setItem("kontract.api", decodeURIComponent(a[1]));
-    if (t || a) history.replaceState(null, "", location.pathname + location.search);
-  }
+  const embedded = window.parent !== window;
+  const pending = new Map();
+  let seq = 0;
 
-  takeFromFragment();
-  const token = sessionStorage.getItem("kontract.token");
-  // The launcher passes the platform origin alongside the token; fall back to
-  // same-origin for themes served behind a proxy.
-  const API = sessionStorage.getItem("kontract.api") || "";
+  window.addEventListener("message", (event) => {
+    const m = event.data;
+    if (!m || m.type !== "kontract-rpc-result" || !pending.has(m.id)) return;
+    const { resolve, reject, timer } = pending.get(m.id);
+    pending.delete(m.id);
+    clearTimeout(timer);
+    if (m.ok) {
+      resolve(m.data);
+    } else {
+      reject(Object.assign(new Error(m.error || "request failed"), { status: m.status }));
+    }
+  });
 
-  async function call(method, path, body) {
-    const res = await fetch(`${API}/api/v1${path}`, {
-      method,
-      headers: {
-        Authorization: `Bearer ${token}`,
-        ...(body ? { "Content-Type": "application/json" } : {}),
-      },
-      body: body ? JSON.stringify(body) : undefined,
+  function call(op, ...args) {
+    if (!embedded) {
+      return Promise.reject(new Error("not launched from Konstruct"));
+    }
+    return new Promise((resolve, reject) => {
+      const id = ++seq;
+      const timer = setTimeout(() => {
+        if (pending.delete(id)) reject(new Error("kontract: request timed out"));
+      }, 20000);
+      pending.set(id, { resolve, reject, timer });
+      // The request carries no secrets, so "*" is safe here; the platform
+      // replies with targetOrigin pinned to this theme's origin.
+      window.parent.postMessage({ type: "kontract-rpc", id, op, args }, "*");
     });
-    if (res.status === 401) {
-      document.body.innerHTML =
-        "<p style='font-family:monospace;padding:2rem'>Session expired — relaunch from Konstruct.</p>";
-      throw new Error("unauthorized");
-    }
-    if (!res.ok) {
-      const text = await res.text();
-      throw Object.assign(new Error(text || res.statusText), { status: res.status });
-    }
-    return res.status === 204 ? null : res.json();
   }
 
   return {
-    hasToken: () => Boolean(token),
-    discover: (org) => call("GET", `/kontract/discovery/${org}`),
-    zones: (org) => call("GET", `/kontract/zones/${org}`),
-    createZone: (org, zone) => call("POST", `/kontract/zones/${org}`, zone),
-    apps: (org) => call("GET", `/kontract/apps/${org}`),
-    appRepos: (org) => call("GET", `/konstruct-application/${org}`),
-    shipApp: (app) => call("POST", `/kontract/app`, app),
-    updateApp: (org, name, body) => call("PATCH", `/kontract/app/${org}/${name}`, body),
-    deleteApp: (org, name) => call("DELETE", `/kontract/app/${org}/${name}`),
-    redeploy: (org, name) => call("POST", `/kontract/app/${org}/${name}/redeploy`),
-    buildLogs: (org, name) => call("GET", `/kontract/app/${org}/${name}/build-logs`),
-    character: (org) => call("GET", `/kontract/character/${org}`),
-    saveCharacter: (org, spec) => call("PUT", `/kontract/character/${org}`, spec),
+    isLaunched: () => embedded,
+    // Back-compat alias for themes written against the token handoff.
+    hasToken: () => embedded,
+    discover: (org) => call("discover", org),
+    zones: (org) => call("zones", org),
+    createZone: (org, zone) => call("createZone", org, zone),
+    apps: (org) => call("apps", org),
+    appRepos: (org) => call("appRepos", org),
+    shipApp: (app) => call("shipApp", app),
+    updateApp: (org, name, body) => call("updateApp", org, name, body),
+    deleteApp: (org, name) => call("deleteApp", org, name),
+    redeploy: (org, name) => call("redeploy", org, name),
+    buildLogs: (org, name) => call("buildLogs", org, name),
+    character: (org) => call("character", org),
+    saveCharacter: (org, spec) => call("saveCharacter", org, spec),
   };
 })();

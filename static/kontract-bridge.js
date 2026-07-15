@@ -15,7 +15,7 @@
  */
 (() => {
   const org = new URLSearchParams(location.search).get("org");
-  if (!org || !window.kontract || !kontract.hasToken()) return;
+  if (!org || typeof kontract === "undefined" || !kontract.hasToken()) return;
 
   const GIT_BASE = "https://github.com/konstructio/";
   const BAND_CAPS = { small: [10, 10], medium: [20, 20], large: [30, 30] };
