@@ -151,13 +151,28 @@
     // ── real repo picker: the org's registered repositories ────────
     kontract
       .appRepos(org)
-      .then((repos) => {
-        const list = (Array.isArray(repos) ? repos : [])
+      .then(async (repos) => {
+        let list = (Array.isArray(repos) ? repos : [])
           .map((r) => {
             const name = (r.repo_name || r.name || "").split("/").pop();
             return name ? { v: name, label: name + (r.namespace ? " \u00b7 " + r.namespace : "") } : null;
           })
           .filter(Boolean);
+        if (!list.length) {
+          // No registered App Repositories yet — derive the picker from the
+          // org's existing apps so re-shipping a known repo always works.
+          const apps = await kontract.apps(org).catch(() => []);
+          const seen = {};
+          list = (Array.isArray(apps) ? apps : [])
+            .map((a) => {
+              const full = a.repo_name || "";
+              const name = full.split("/").pop();
+              if (!name || seen[name]) return null;
+              seen[name] = true;
+              return { v: name, label: name + " \u00b7 from your apps" };
+            })
+            .filter(Boolean);
+        }
         // Launched mode never shows the prototype's fake repos: an empty org
         // gets an honest pointer at the real fix instead.
         game.REPOS = list.length
