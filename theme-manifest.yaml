@@ -1,0 +1,105 @@
+kontractTheme: v1
+meta:
+  name: ship-it
+  displayName: "Ship It!"
+  contract: v2
+  profile: game
+  capabilities: [apps, zones, shop, character, universe]
+metaphor:
+  premise: >
+    A retro-arcade space program. Planets are zones, rockets are apps, and a
+    pixel hero levels up by actually shipping software. The fleet only ever
+    grows — come back after a week of launches and the universe is bigger.
+  aesthetic:
+    style: pixel-art
+    palette: ["#111518", "#00ff6f", "#fdc700", "#00bcff", "#f3f5f7"]
+    motion: "chunky arcade; the launch cinematic is the one lingering beat"
+  branding:
+    references: ["Civo", "Konstruct"]
+    tone: "platform-engineering in-jokes, CRT scanlines, chiptune beeps"
+vocabulary:
+  zone:   { singular: planet, plural: planets, verb: claim }
+  app:    { singular: rocket, plural: rockets, verb: launch }
+  deploy: { verb: launch }
+  shop:     { name: "The Ship Shop" }
+  universe: { name: "Universe" }
+zones:
+  metaphor: planet
+  tiers:
+    small:  { name: "Small Planet",  fits: "a cozy starter world" }
+    medium: { name: "Medium Planet", fits: "room for a fleet" }
+    large:  { name: "Large Planet",  fits: "room for an armada" }
+  upgradeNarrative: "terraforming"
+apps:
+  metaphor: rocket
+  phaseWords:
+    Building:  "IN FLIGHT"
+    Pushing:   "IN FLIGHT"
+    Deploying: "IN FLIGHT"
+    Live:      "HEALTHY"
+    Failed:    "LAUNCH FAILED"
+shipMoment:
+  description: >
+    The full launch sequence: protein pills packed, helmet on, crew walks out
+    and boards, hatch seals, pre-flight whimsy (gravity check, snack
+    inventory, helmet seals, launch codes), ignition countdown, LIFTOFF with
+    shaking screen and flame frames, then touchdown on the target planet.
+  durationSeconds: 25
+  skippable: true
+  blocking: false
+  fridayVariant: "Friday launch modal — extra fanfare and XP for shipping on a Friday."
+character:
+  enabled: true
+  archetype: "platform engineering hero"
+  naming: { default: random-callsign, playerNamed: true }
+  slots: [species, helmet, suit, cape, gadget]
+  cosmetics:
+    - { key: shipit.cape.aurora,     slot: cape,   name: "Aurora Cape",     source: level }
+    - { key: shipit.helmet.crown,    slot: helmet, name: "Crown Helmet",    source: level }
+    - { key: shipit.suit.gold-rush,  slot: suit,   name: "Gold Rush Suit",  source: level }
+    - { key: shipit.gadget.gold-keys, slot: gadget, name: "Gold Keyboard",  source: level }
+    - { key: shipit.cape.starlight,  slot: cape,   name: "Starlight Cape",  source: level }
+shop:
+  sections:
+    zones: { source: discovery }
+    freeItems:
+      - { key: svc.book-dietz,  name: "Meet John Dietz" }
+      - { key: svc.book-donna,  name: "Coffee with Donna" }
+    humanServices:
+      - { key: svc.book-dietz,     name: "Meet John Dietz",     action: { type: link, url: "https://ro.am/johndietz/book-me" } }
+      - { key: svc.book-donna,     name: "Coffee with Donna",   action: { type: link, url: "https://ro.am/johndietz/book-me" } }
+      - { key: svc.konstruct-crew, name: "Konstruct Crew · 5h", action: { type: link, url: "https://www.civo.com/konstruct#contact" } }
+    resources:
+      - { key: shipit.rocket.swift, name: "Swift MK-II" }
+      - { key: shipit.rocket.flag,  name: "Gold Flagship" }
+progression:
+  xpEvents:
+    - { event: ship-app,  xp: 50 }
+    - { event: app-live,  xp: 50 }
+  quests:
+    - { key: shipit.q1, title: "Define Your Repo",  hook: register-app,   xp: 50 }
+    - { key: shipit.q2, title: "Hello, World",      hook: ship-app,       xp: 100 }
+    - { key: shipit.q3, title: "Crew of Two",       hook: scale-replicas, xp: 75 }
+    - { key: shipit.q4, title: "Fleet Commander",   hook: ship-app,       xp: 150 }
+    - { key: shipit.q5, title: "Fuel Switch",       hook: change-branch,  xp: 200 }
+    - { key: shipit.q6, title: "Big Spender",       hook: shop,           xp: 75 }
+    - { key: shipit.q7, title: "Multi-Planetary",   hook: create-zone,    xp: 150 }
+    - { key: shipit.q8, title: "Streak Keeper",     hook: streak,         xp: 300 }
+universeView:
+  name: "Universe"
+  composition: >
+    Every planet ever claimed drawn with its orbiting pods; billboards under
+    active planets. The map only accretes.
+  growthRule: "only accretes"
+  dataOverlay: { toggle: true, defaultOff: true, contents: [app-names, urls, status] }
+surprises:
+  easterEggBudget: 3
+  ambient:
+    - { trigger: friday-ship, effect: "Friday launch modal with bonus fanfare" }
+storyline:
+  slots:
+    references: ["civo", "konstruct"]
+    flavor: ["GG Organization arcade fiction in standalone mode only", "hero callsign generator"]
+generation:
+  promptVersion: 0
+  model: "hand-authored (flagship reference theme)"

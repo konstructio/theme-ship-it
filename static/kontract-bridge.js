@@ -299,6 +299,14 @@
       const name = realName(ga);
       if (!name) return;
       kontract
+        .buildLogs(org, name)
+        .then((bl) => {
+          const raw = (bl && bl.logs) || "";
+          const tail = raw.split("\n").slice(-30).join("\n").trim();
+          game.mutApp(id, { flightLog: tail || "(no build output yet)" });
+        })
+        .catch(() => {});
+      kontract
         .metrics(org, name, { range: "1h", step: "30s" })
         .then((m) => {
           const series = (m && m.series) || [];
@@ -312,6 +320,21 @@
           });
         })
         .catch(() => {});
+    };
+
+    // ── decommission: the real deleteApp behind the game action ─────
+    const origDecommission = game.decommission.bind(game);
+    game.decommission = function (appId) {
+      const ga = game.state.apps.find((a) => a.id === appId);
+      const name = realName(ga);
+      origDecommission(appId);
+      // origDecommission only proceeds past its confirm() by removing the
+      // app — if it is gone from state, the player confirmed.
+      if (name && !game.state.apps.some((a) => a.id === appId)) {
+        kontract.deleteApp(org, name).catch(() => {
+          game.showToast && game.showToast("DECOMMISSION SYNC FAILED", "The platform kept " + name + " — it will reappear on the next poll.");
+        });
+      }
     };
 
     // ── fuel line: branch changes PATCH the real app ────────────────
