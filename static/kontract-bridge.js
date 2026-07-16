@@ -292,6 +292,22 @@
       if (name === "memory") return (last / 1048576).toFixed(0) + " MB";
       return String(Math.round(last));
     };
+    const seriesPoints = (m, name) => {
+      const x = ((m && m.series) || []).find((s) => s.name === name);
+      return (x && x.points) || [];
+    };
+    // sparkline feed: refresh cpu/mem series for live apps (best-effort)
+    const refreshSparks = () => {
+      game.state.apps.forEach((ga) => {
+        const name = realName(ga);
+        if (!name || ga.status !== "live") return;
+        kontract
+          .metrics(org, name, { range: "1h", step: "2m" })
+          .then((m) => game.mutApp(ga.id, { metricsCpu: seriesPoints(m, "cpu"), metricsMem: seriesPoints(m, "memory") }))
+          .catch(() => {});
+      });
+    };
+
     const origOpenStats = game.openAppStats.bind(game);
     game.openAppStats = function (id, from) {
       origOpenStats(id, from);
@@ -354,6 +370,8 @@
     };
 
     // ── poll real app phases onto the game ──────────────────────────
+    setTimeout(refreshSparks, 2500);
+    setInterval(refreshSparks, 30000);
     setInterval(() => {
       kontract
         .apps(org)
