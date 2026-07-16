@@ -376,9 +376,6 @@ input:focus,select:focus{outline:none;border-color:#00ff6f !important;}
                       <sc-if value="{{ a.showLaunch }}" hint-placeholder-val="{{ false }}">
                         <button onClick="{{ a.launch }}" style="height:36px;padding:0 16px;background:#00ff6f;color:#111518;border:none;border-radius:4px;font-family:'Press Start 2P',monospace;font-size:8px;cursor:pointer;animation:su-blink 1.5s step-end infinite;" style-hover="animation:none;background:#05df72;">▶ LAUNCH</button>
                       </sc-if>
-                      <sc-if value="{{ a.showPush }}" hint-placeholder-val="{{ false }}">
-                        <button onClick="{{ a.push }}" style="height:34px;padding:0 14px;background:transparent;border:1px solid #3b4954;border-radius:4px;color:#dbe1e6;font-size:12px;font-weight:600;cursor:pointer;" style-hover="border-color:#00ff6f;color:#00ff6f;">⇡ Push commit</button>
-                      </sc-if>
                     </div>
                     <sc-if value="{{ a.hasUrl }}" hint-placeholder-val="{{ false }}">
                       <div style="display:flex;align-items:center;gap:8px;font-size:12px;">
@@ -397,11 +394,6 @@ input:focus,select:focus{outline:none;border-color:#00ff6f !important;}
                         <span style="font-family:'Press Start 2P',monospace;font-size:9px;color:#f3f5f7;">{{ a.replicas }}</span>
                         <button onClick="{{ a.repPlus }}" style="width:24px;height:24px;background:#263237;border:1px solid #3b4954;border-radius:3px;color:#9fafbc;cursor:pointer;font-size:12px;" style-hover="color:#00ff6f;border-color:#00ff6f;">+</button>
                       </div>
-                      <span style="color:#4b5d6c;">·</span>
-                      <label style="display:inline-flex;align-items:center;gap:7px;cursor:pointer;" title="Blue/green launch">
-                        <span onClick="{{ a.toggleBg }}" style="width:34px;height:18px;border-radius:9px;background:{{ a.bgBg }};position:relative;display:inline-block;transition:background 200ms;"><span style="position:absolute;top:2px;left:{{ a.bgKnob }};width:14px;height:14px;border-radius:50%;background:#f3f5f7;transition:left 200ms;"></span></span>
-                        <span style="color:{{ a.bgFg }};">blue/green</span>
-                      </label>
                     </div>
                   </div>
                 </sc-for>
@@ -1007,7 +999,7 @@ class Component extends DCLogic {
       { id: 'q2', name: 'HELLO, WORLD', desc: 'Complete your first launch', xp: 100 },
       { id: 'q3', name: 'CREW OF TWO', desc: 'Run 2 replicas of one app', xp: 75 },
       { id: 'q4', name: 'FLEET COMMANDER', desc: 'Ship a second app', xp: 150 },
-      { id: 'q5', name: 'ZERO DOWNTIME', desc: 'Pull off a blue/green launch', xp: 200 },
+      { id: 'q5', name: 'FUEL SWITCH', desc: "Switch a rocket's fuel line to another branch", xp: 200 },
       { id: 'q6', name: 'BIG SPENDER', desc: 'Buy from the Ship Shop', xp: 75 },
       { id: 'q7', name: 'MULTI-PLANETARY', desc: 'Own a second planet', xp: 150 },
       { id: 'q8', name: 'STREAK KEEPER', desc: '7 days of green health checks', xp: 300, locked: true }
@@ -1346,12 +1338,6 @@ class Component extends DCLogic {
     if (next >= 2 && this.state.apps.find(x => x.id === id).launched) this.completeQuest('q3');
     this.later(() => this.persist(), 100);
   }
-  toggleBg(id) {
-    const a = this.state.apps.find(x => x.id === id);
-    this.beep('sel');
-    this.mutApp(id, { bg: !a.bg });
-    if (!a.bg) this.showToast('BLUE/GREEN ARMED', 'Next launch lands in the green zone, then traffic swaps. Zero downtime, baby.', '#74d4ff');
-  }
 
   // ─── launch cinematic ───
   startLaunch(appId) {
@@ -1456,7 +1442,7 @@ class Component extends DCLogic {
     }, i * 460 * f));
   }
   runTests(f) {
-    const names = ['UNIT TESTS', 'CONTAINER SCAN', 'HEALTH PROBE', 'LAUNCH CODES'];
+    const names = ['GRAVITY CHECK', 'SNACK INVENTORY', 'HELMET SEALS', 'LAUNCH CODES'];
     names.forEach((n, i) => {
       this.later(() => { if (this.state.launch) { this.setLaunch({ tests: [...this.state.launch.tests, n] }); this.beep('quest'); this.addXp(15, { top: 58, left: 62 }); } }, i * 950 * f);
     });
@@ -1473,10 +1459,6 @@ class Component extends DCLogic {
   }
   runServe() {
     const a = this.launchApp(); if (!a) return;
-    if (a.bg && a.launched) {
-      this.setLaunch({ swap: true });
-      this.later(() => { this.showToast('TRAFFIC SWAPPED → GREEN', 'Zero downtime achieved. The crowd goes wild.', '#00ff6f'); this.addXp(50, { top: 42 }); this.completeQuest('q5'); }, 900 * this._f);
-    }
     this.beep('levelup');
   }
   launchApp() { return this.state.launch ? this.state.apps.find(x => x.id === this.state.launch.appId) : null; }
@@ -1578,6 +1560,7 @@ class Component extends DCLogic {
     const next = (window.prompt('FUEL LINE — which branch feeds this rocket?', a.branch || 'main') || '').trim();
     if (!next || next === a.branch) { this.beep('blip'); return; }
     this.mutApp(appId, { branch: next });
+    this.completeQuest('q5');
     this.beep('coin');
     this.showToast('FUEL LINE SWITCHED', a.name + ' now burns ' + next + ' — next launch uses it.', '#00ff6f');
   }
@@ -1932,10 +1915,7 @@ class Component extends DCLogic {
         replicas: a.replicas,
         repMinus: () => this.setReplicas(a.id, -1),
         repPlus: () => this.setReplicas(a.id, 1),
-        toggleBg: () => this.toggleBg(a.id),
-        bgBg: a.bg ? '#00a63e' : '#3b4954',
-        bgKnob: a.bg ? '18px' : '2px',
-        bgFg: a.bg ? '#00ff6f' : '#758c9f'
+        repEnd: true
       };
     });
 
@@ -1985,7 +1965,7 @@ class Component extends DCLogic {
         });
       }
     }
-    const tests = l ? ['UNIT TESTS', 'CONTAINER SCAN', 'HEALTH PROBE', 'LAUNCH CODES'].map(n => {
+    const tests = l ? ['GRAVITY CHECK', 'SNACK INVENTORY', 'HELMET SEALS', 'LAUNCH CODES'].map(n => {
       const done = l.tests.indexOf(n) !== -1;
       return { name: n, mark: done ? '✓' : '…', fg: done ? '#00ff6f' : '#758c9f', bd: done ? '#0d542b' : '#263237' };
     }) : [];
@@ -2057,7 +2037,7 @@ class Component extends DCLogic {
             { k: 'IMAGE', v: a.imageSha || '—' },
             { k: 'BUILDER', v: 'CLOUD NATIVE BUILDPACKS' },
             { k: 'BUILD TIME', v: a.buildTime || '—' },
-            { k: 'TRIGGER', v: 'PUSH TO MAIN' },
+            { k: 'TRIGGER', v: 'PUSH TO ' + (a.branch || 'main').toUpperCase() },
             { k: 'LAST DEPLOY', v: a.lastLaunch ? this.timeAgo(a.lastLaunch) : 'NEVER' },
             { k: 'GITOPS SYNC', v: 'ARGO · AUTO' }
           ],
@@ -2068,7 +2048,7 @@ class Component extends DCLogic {
             { k: 'TOTAL DRAW', v: (a.cpu * a.replicas) + ' CPU · ' + (a.mem * a.replicas) + ' GB' },
             { k: 'PLANET', v: this.planetName(a.planetId) },
             { k: 'PORT', v: '8080' },
-            { k: 'ROLLOUT', v: a.bg ? 'BLUE/GREEN' : 'ROLLING' },
+            { k: 'ROLLOUT', v: 'ROLLING · GITOPS KEEPS IT SMOOTH' },
             { k: 'REGISTERED', v: this.timeAgo(a.createdAt) },
             ...(a.readouts ? [
               { k: 'ENG · CPU', v: a.readouts.cpu },
