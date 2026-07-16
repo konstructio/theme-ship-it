@@ -679,7 +679,7 @@ input:focus,select:focus{outline:none;border-color:#00ff6f !important;}
                   <div style="display:flex;justify-content:space-between;gap:14px;font-size:12px;border-bottom:1px solid #1d2629;padding-bottom:6px;"><span style="color:#758c9f;flex-shrink:0;">{{ r.k }}</span><span style="font-family:'Reddit Mono',monospace;font-size:11.5px;color:#dbe1e6;text-align:right;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">{{ r.v }}</span></div>
                 </sc-for>
               <button onClick="{{ adChangeBranch }}" style="margin-top:8px;height:30px;background:#263237;border:1px solid #3b4954;border-radius:4px;color:#fdc700;cursor:pointer;font-family:'Press Start 2P',monospace;font-size:8px;padding:0 10px;" style-hover="border-color:#fdc700;">⛽ FUEL LINE: {{ adBranch }}</button>
-              <button onClick="{{ adDecommission }}" style="margin-top:8px;margin-left:8px;height:30px;background:#263237;border:1px solid #3b4954;border-radius:4px;color:#fb2c37;cursor:pointer;font-family:'Press Start 2P',monospace;font-size:8px;padding:0 10px;" style-hover="border-color:#fb2c37;">☠ DECOMMISSION</button>
+              <button onClick="{{ adDecommission }}" style="margin-top:8px;margin-left:8px;height:30px;background:#263237;border:1px solid #3b4954;border-radius:4px;color:#fb2c37;cursor:pointer;font-family:'Press Start 2P',monospace;font-size:8px;padding:0 10px;" style-hover="border-color:#fb2c37;">{{ adDecomLabel }}</button>
               <sc-if value="{{ adHasFlightLog }}" hint-placeholder-val="{{ false }}">
                 <div style="margin-top:14px;">
                   <div style="font-family:'Press Start 2P',monospace;font-size:8px;color:#9fafbc;margin-bottom:6px;">▤ FLIGHT LOG</div>
@@ -1564,8 +1564,16 @@ class Component extends DCLogic {
   backFromApp = () => { this.beep('blip'); this.setState({ screen: this.state.appBack === 'planetDetail' ? 'planetDetail' : 'hq' }); };
   decommission(appId) {
     const a = this.state.apps.find(x => x.id === appId); if (!a) return;
-    if (!window.confirm('DECOMMISSION ' + a.name + '? The rocket comes down and its pods go dark. This is real.')) { this.beep('blip'); return; }
-    this.setState({ apps: this.state.apps.filter(x => x.id !== appId) });
+    // two-click arm: sandboxed iframes block window.confirm, and an armed
+    // button is better arcade UX anyway
+    if (this.state.armDecom !== appId) {
+      this.setState({ armDecom: appId });
+      this.beep('deny');
+      this.showToast('ARMED', 'Press ☠ again within 5s to decommission ' + a.name + '. This is real.', '#fb2c37');
+      this.later(() => { if (this.state.armDecom === appId) this.setState({ armDecom: null }); }, 5000);
+      return;
+    }
+    this.setState({ armDecom: null, apps: this.state.apps.filter(x => x.id !== appId) });
     this.beep('land');
     this.showToast('ROCKET DECOMMISSIONED', a.name + ' retired with full honors.', '#fdc700');
     this.backFromApp();
@@ -2076,6 +2084,7 @@ class Component extends DCLogic {
           adChangeBranch: () => this.changeBranch(a.id),
           adBranch: a.branch || 'main',
           adDecommission: () => this.decommission(a.id),
+          adDecomLabel: s.armDecom === a.id ? '☠ CONFIRM?' : '☠ DECOMMISSION',
           adFlightLog: a.flightLog || '',
           adHasFlightLog: !!a.flightLog,
           pods: podRows,
