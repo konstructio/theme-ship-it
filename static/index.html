@@ -419,6 +419,7 @@ input:focus,select:focus{outline:none;border-color:#00ff6f !important;}
               <button onClick="{{ closeShop }}" style="width:38px;height:38px;background:#263237;border:1px solid #3b4954;border-radius:4px;color:#9fafbc;cursor:pointer;font-size:15px;" style-hover="color:#00ff6f;border-color:#00ff6f;">←</button>
               <div>
                 <div style="font-family:'Press Start 2P',monospace;font-size:15px;color:#fdc700;text-shadow:3px 3px 0 rgba(0,0,0,0.6);">THE SHIP SHOP</div>
+              <div style="margin-top:10px;padding:10px 14px;background:rgba(0,255,111,0.08);border:2px dashed #00ff6f;border-radius:4px;font-family:'Press Start 2P',monospace;font-size:8px;line-height:1.9;color:#00ff6f;animation:su-pulse 2.2s ease-in-out infinite;">✨ LIMITED TIME · GRAVITY-FREE SALE ✨<br /><span style="color:#9fafbc;">NO COSTS THROUGH JULY 30 — INTRODUCTION SALE, WHILE RESOURCES LAST</span></div>
                 <div style="font-size:12px;color:#9fafbc;margin-top:5px;">Rockets, planets &amp; app packs. A bot named ARGO runs the till.</div>
               </div>
               <div style="flex:1;"></div>
@@ -995,8 +996,8 @@ class Component extends DCLogic {
     this.ORG = 'GG ORGANIZATION'; this.ORG_TAG = 'GG';
     this.ROCKET_TIERS = [
       { id: 'rust', name: 'RUSTBUCKET', price: 0, note: 'Trusty starter ship. Smells like cache.', colors: {} },
-      { id: 'swift', name: 'SWIFT MK-II', price: 1, note: '20% faster builds · ' + this.ORG_TAG + ' livery on the hull', colors: { g: '#00bcff', G: '#0069a8', b: '#a2f4fd' } },
-      { id: 'flag', name: 'GOLD FLAGSHIP', price: 33, note: '+25 XP sponsor bonus per launch · ' + this.ORG_TAG + ' livery', colors: { g: '#fdc700', G: '#e17100', b: '#fef9c2', m: '#ffd230' } }
+      { id: 'swift', name: 'SWIFT MK-II', price: 0, note: '20% faster builds · ' + this.ORG_TAG + ' livery on the hull', colors: { g: '#00bcff', G: '#0069a8', b: '#a2f4fd' } },
+      { id: 'flag', name: 'GOLD FLAGSHIP', price: 0, note: '+25 XP sponsor bonus per launch · ' + this.ORG_TAG + ' livery', colors: { g: '#fdc700', G: '#e17100', b: '#fef9c2', m: '#ffd230' } }
     ];
     this.POD_SLOTS = [[52, 44], [132, 58], [84, 118], [162, 124], [44, 158], [120, 172]];
     this.THRESHOLDS = [100, 300, 600, 1000, 1500, 2200, 3000, 4200, 6000];
@@ -1159,7 +1160,7 @@ class Component extends DCLogic {
     this.beep('coin');
     this.setState({
       packsOwned: 1,
-      billItems: [{ label: 'STARTER APP PACK (10 APPS)', amt: 10 }],
+      billItems: [{ label: 'STARTER APP PACK (10 APPS)', amt: 0 }],
       hero: Object.assign({}, this.state.hero, { name: this.randOf(this.HERO_NAMES) }),
       screen: 'create', createMode: 'onboard'
     });
@@ -1529,7 +1530,7 @@ class Component extends DCLogic {
   closeShop = () => { this.beep('blip'); this.setState({ screen: 'hq' }); };
   buyPack = () => {
     this.beep('buy');
-    this.setState({ packsOwned: this.state.packsOwned + 1, billItems: [...this.state.billItems, { label: 'APP 10-PACK', amt: 10 }] });
+    this.setState({ packsOwned: this.state.packsOwned + 1, billItems: [...this.state.billItems, { label: 'APP 10-PACK', amt: 0 }] });
     this.showToast('PURCHASED!', '+10 app tokens. Ship recklessly (responsibly).', '#fdc700');
     this.completeQuest('q6');
     this.later(() => this.persist(), 100);
@@ -1541,7 +1542,7 @@ class Component extends DCLogic {
   buyHours = () => {
     if (this.state.level < 5) { this.beep('deny'); return; }
     this.beep('buy');
-    this.setState({ billItems: [...this.state.billItems, { label: 'KONSTRUCT CREW · 5 HOURS', amt: 1000, once: true }] });
+    this.setState({ billItems: [...this.state.billItems, { label: 'KONSTRUCT CREW · 5 HOURS', amt: 0, once: true }] });
     this.showToast('CREW BOOKED!', 'Opening the Konstruct contact page in a new tab — real humans will take it from there.', '#fdc700');
     this.completeQuest('q6');
     this.later(() => this.persist(), 100);
@@ -1559,7 +1560,7 @@ class Component extends DCLogic {
     this.beep('buy');
     this.setState({
       planets: this.state.planets.map(x => x.id === p.id ? Object.assign({}, x, { cpu: x.cpu + 10, mem: x.mem + 10, cls: 'UPGRADED' }) : x),
-      billItems: [...this.state.billItems, { label: 'PLANET UPGRADE · ' + p.name, amt: 7 }]
+      billItems: [...this.state.billItems, { label: 'PLANET UPGRADE · ' + p.name, amt: 0 }]
     });
     this.showToast('PLANET UPGRADED!', p.name + ' now has +10 CPU · +10 GB. Room to grow.', '#fdc700');
     this.completeQuest('q6');
@@ -2201,15 +2202,15 @@ class Component extends DCLogic {
       // shop
       merchantLayers: sp ? S.heroLayers({ species: 1, helmet: 0, suit: 3, cape: 0, gadget: 3 }, 4) : [],
       shopItems: sp ? [
-        { name: 'APP 10-PACK', desc: '+10 app tokens to ship more weird ideas.', price: '$10/MO', iconBs: S.shadow(S.CRATE.rows, S.CRATE.colors, 3, 0, 0), buy: this.buyPack },
-        { name: 'SMALL PLANET', desc: '10 CPU · 10 GB. Cozy starter world.', price: '$8/MO', iconBs: S.planetShadow(1, 2.4), buy: () => this.buyPlanet('SMALL', 10, 10, 8) },
-        { name: 'MEDIUM PLANET', desc: '20 CPU · 20 GB. Room for a fleet.', price: '$15/MO', iconBs: S.planetShadow(4, 2.9), buy: () => this.buyPlanet('MEDIUM', 20, 20, 15) },
-        { name: 'PLANET UPGRADE', desc: '+10 CPU · +10 GB on your first world.', price: '$7/MO', iconBs: S.shadow(S.POD.rows, S.POD.colors, 5, 0, 0), buy: this.buyUpgrade },
-        { name: 'SWIFT MK-II', desc: '20% faster builds. ' + this.ORG_TAG + ' livery on the hull.', price: '$1/MO', iconBs: S.shadow(S.ROCKET.rows, this.rocketColors('swift'), 2.4, 0, 0), buy: () => this.buyRocket('swift') },
-        { name: 'GOLD FLAGSHIP', desc: '+25 XP sponsor bonus per launch. Shiny.', price: '$33/MO', iconBs: S.shadow(S.ROCKET.rows, this.rocketColors('flag'), 2.4, 0, 0), buy: () => this.buyRocket('flag') },
+        { name: 'APP 10-PACK', desc: '+10 app tokens to ship more weird ideas.', price: '$0', iconBs: S.shadow(S.CRATE.rows, S.CRATE.colors, 3, 0, 0), buy: this.buyPack },
+        { name: 'SMALL PLANET', desc: '10 CPU · 10 GB. Cozy starter world.', price: '$0', iconBs: S.planetShadow(1, 2.4), buy: () => this.buyPlanet('SMALL', 10, 10, 0) },
+        { name: 'MEDIUM PLANET', desc: '20 CPU · 20 GB. Room for a fleet.', price: '$0', iconBs: S.planetShadow(4, 2.9), buy: () => this.buyPlanet('MEDIUM', 20, 20, 0) },
+        { name: 'PLANET UPGRADE', desc: '+10 CPU · +10 GB on your first world.', price: '$0', iconBs: S.shadow(S.POD.rows, S.POD.colors, 5, 0, 0), buy: this.buyUpgrade },
+        { name: 'SWIFT MK-II', desc: '20% faster builds. ' + this.ORG_TAG + ' livery on the hull.', price: '$0', iconBs: S.shadow(S.ROCKET.rows, this.rocketColors('swift'), 2.4, 0, 0), buy: () => this.buyRocket('swift') },
+        { name: 'GOLD FLAGSHIP', desc: '+25 XP sponsor bonus per launch. Shiny.', price: '$0', iconBs: S.shadow(S.ROCKET.rows, this.rocketColors('flag'), 2.4, 0, 0), buy: () => this.buyRocket('flag') },
         { name: 'MEET JOHN DIETZ', desc: 'One meeting with the Konstruct cofounder. Best deal in the galaxy.', price: '$0', iconBs: '', img: 'uploads/johndietz-pixel.png', buy: this.bookDietz, href: 'https://ro.am/johndietz/book-me', cta: 'BOOK' },
         { name: 'COFFEE WITH DONNA', desc: 'Grab a coffee and talk platform with Donna. Bring your own mug.', price: '$0', iconBs: '', img: 'uploads/coffee-pixel.png', buy: this.bookDonna, href: 'https://ro.am/johndietz/book-me', cta: 'BOOK' },
-        { name: 'KONSTRUCT CREW · 5 HRS', desc: 'Five hours with the Konstruct team. Real humans, real expertise.', price: '$1,000', iconBs: S.shadow(S.COIN.rows, S.COIN.colors, 5, 0, 0), buy: this.buyHours, href: 'https://www.civo.com/konstruct#contact', locked: s.level < 5, lockNote: 'LV 5 REQUIRED' }
+        { name: 'KONSTRUCT CREW · 5 HRS', desc: 'Five hours with the Konstruct team. Real humans, real expertise.', price: '$0', iconBs: S.shadow(S.COIN.rows, S.COIN.colors, 5, 0, 0), buy: this.buyHours, href: 'https://www.civo.com/konstruct#contact', locked: s.level < 5, lockNote: 'LV 5 REQUIRED' }
       ].map(i => Object.assign({ lockNote: '' }, i, {
         cta: i.cta || 'BUY',
         href: i.href || '#',
