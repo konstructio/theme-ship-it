@@ -282,6 +282,54 @@
       }
     };
 
+    // ── engine readouts: real metrics on the rocket detail screen ───
+    const fmtPoint = (series, name) => {
+      const m = (series || []).find((x) => x.name === name);
+      const pts = (m && m.points) || [];
+      const last = pts.length ? parseFloat(pts[pts.length - 1][1]) : NaN;
+      if (Number.isNaN(last)) return "—";
+      if (name === "cpu") return last.toFixed(3) + " CORES";
+      if (name === "memory") return (last / 1048576).toFixed(0) + " MB";
+      return String(Math.round(last));
+    };
+    const origOpenStats = game.openAppStats.bind(game);
+    game.openAppStats = function (id, from) {
+      origOpenStats(id, from);
+      const ga = game.state.apps.find((a) => a.id === id);
+      const name = realName(ga);
+      if (!name) return;
+      kontract
+        .metrics(org, name, { range: "1h", step: "30s" })
+        .then((m) => {
+          const series = (m && m.series) || [];
+          game.mutApp(id, {
+            readouts: {
+              cpu: fmtPoint(series, "cpu"),
+              memory: fmtPoint(series, "memory"),
+              pods: fmtPoint(series, "pods"),
+              restarts: fmtPoint(series, "restarts"),
+            },
+          });
+        })
+        .catch(() => {});
+    };
+
+    // ── fuel line: branch changes PATCH the real app ────────────────
+    const origChangeBranch = game.changeBranch.bind(game);
+    game.changeBranch = function (appId) {
+      const before = game.state.apps.find((a) => a.id === appId);
+      const prev = before && before.branch;
+      origChangeBranch(appId);
+      const after = game.state.apps.find((a) => a.id === appId);
+      const name = realName(after);
+      if (name && after && after.branch !== prev) {
+        kontract.updateApp(org, name, { branch: after.branch }).catch(() => {
+          game.showToast && game.showToast("FUEL LINE SYNC FAILED", "The platform kept " + (prev || "main") + ".");
+          game.mutApp(appId, { branch: prev });
+        });
+      }
+    };
+
     // ── poll real app phases onto the game ──────────────────────────
     setInterval(() => {
       kontract
@@ -306,6 +354,14 @@
             }
             // never interrupt the cinematic; it settles on its own
             if (game.state.launch && game.state.launch.appId === ga.id) return ga;
+            // celebrate the ship: the FIRST transition to live plays the
+            // full liftoff — the emotional peak must not happen silently
+            if (
+              status === "live" && !ga.launched && ga.status !== "live" &&
+              !game.state.launch && (game.state.screen === "hq" || game.state.screen === "planetDetail")
+            ) {
+              setTimeout(() => { if (!game.state.launch) origStartLaunch(ga.id); }, 400);
+            }
             return Object.assign({}, ga, {
               status,
               url: url || ga.url,

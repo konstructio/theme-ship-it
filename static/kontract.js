@@ -57,6 +57,7 @@ const kontract = (() => {
     deleteApp: (org, name) => call("deleteApp", org, name),
     redeploy: (org, name) => call("redeploy", org, name),
     buildLogs: (org, name) => call("buildLogs", org, name),
+    metrics: (org, name, opts) => call("metrics", org, name, opts),
     character: (org) => call("character", org),
     saveCharacter: (org, spec) => call("saveCharacter", org, spec),
   };

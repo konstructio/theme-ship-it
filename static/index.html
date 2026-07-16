@@ -685,6 +685,7 @@ input:focus,select:focus{outline:none;border-color:#00ff6f !important;}
                 <sc-for list="{{ adDeploy }}" as="r" hint-placeholder-count="6">
                   <div style="display:flex;justify-content:space-between;gap:14px;font-size:12px;border-bottom:1px solid #1d2629;padding-bottom:6px;"><span style="color:#758c9f;flex-shrink:0;">{{ r.k }}</span><span style="font-family:'Reddit Mono',monospace;font-size:11.5px;color:#dbe1e6;text-align:right;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">{{ r.v }}</span></div>
                 </sc-for>
+              <button onClick="{{ adChangeBranch }}" style="margin-top:8px;height:30px;background:#263237;border:1px solid #3b4954;border-radius:4px;color:#fdc700;cursor:pointer;font-family:'Press Start 2P',monospace;font-size:8px;padding:0 10px;" style-hover="border-color:#fdc700;">⛽ FUEL LINE: {{ adBranch }}</button>
               </div>
               <div style="background:#151b1e;border:2px solid #3b4954;border-radius:4px;padding:16px;display:flex;flex-direction:column;gap:8px;">
                 <div style="font:500 10px/14px 'Inter',sans-serif;letter-spacing:0.5px;color:#758c9f;">RESOURCES</div>
@@ -1571,6 +1572,14 @@ class Component extends DCLogic {
   backFromPlanet = () => { this.beep('blip'); this.setState({ screen: 'hq' }); };
   openAppStats(id, from) { this.beep('sel'); this.setState({ screen: 'appDetail', viewAppId: id, appBack: from }); }
   backFromApp = () => { this.beep('blip'); this.setState({ screen: this.state.appBack === 'planetDetail' ? 'planetDetail' : 'hq' }); };
+  changeBranch(appId) {
+    const a = this.state.apps.find(x => x.id === appId); if (!a) return;
+    const next = (window.prompt('FUEL LINE — which branch feeds this rocket?', a.branch || 'main') || '').trim();
+    if (!next || next === a.branch) { this.beep('blip'); return; }
+    this.mutApp(appId, { branch: next });
+    this.beep('coin');
+    this.showToast('FUEL LINE SWITCHED', a.name + ' now burns ' + next + ' — next launch uses it.', '#00ff6f');
+  }
   openWardrobe = () => { this.beep('sel'); this.setState({ screen: 'create', createMode: 'wardrobe' }); };
   rocketColors(id) {
     const t = this.ROCKET_TIERS.find(x => x.id === id) || this.ROCKET_TIERS[0];
@@ -2059,8 +2068,16 @@ class Component extends DCLogic {
             { k: 'PLANET', v: this.planetName(a.planetId) },
             { k: 'PORT', v: '8080' },
             { k: 'ROLLOUT', v: a.bg ? 'BLUE/GREEN' : 'ROLLING' },
-            { k: 'REGISTERED', v: this.timeAgo(a.createdAt) }
+            { k: 'REGISTERED', v: this.timeAgo(a.createdAt) },
+            ...(a.readouts ? [
+              { k: 'ENG · CPU', v: a.readouts.cpu },
+              { k: 'ENG · MEM', v: a.readouts.memory },
+              { k: 'ENG · PODS', v: a.readouts.pods },
+              { k: 'ENG · RESTARTS', v: a.readouts.restarts }
+            ] : [])
           ],
+          adChangeBranch: () => this.changeBranch(a.id),
+          adBranch: a.branch || 'main',
           pods: podRows,
           log: (a.history || []).map(h => ({ sha: h.sha, msg: h.msg, result: h.result, fg: '#00ff6f', dur: h.dur, ago: this.timeAgo(h.at) })),
           logEmpty: !(a.history || []).length
