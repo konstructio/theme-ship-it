@@ -704,6 +704,15 @@ input:focus,select:focus{outline:none;border-color:#00ff6f !important;}
                   <pre style="margin:0;max-height:180px;overflow:auto;background:#0c1114;border:1px solid #263237;border-radius:4px;padding:10px;font-family:'Reddit Mono',monospace;font-size:11px;line-height:1.5;color:#9fafbc;white-space:pre-wrap;">{{ adFlightLog }}</pre>
                 </div>
               </sc-if>
+              <sc-if value="{{ adHasTelemetry }}" hint-placeholder-val="{{ false }}">
+                <div style="margin-top:14px;">
+                  <div style="display:flex;align-items:center;gap:8px;font-family:'Press Start 2P',monospace;font-size:8px;color:#9fafbc;margin-bottom:6px;"><span>▤ FLIGHT TELEMETRY</span><span style="color:{{ adTelemetryFg }};">{{ adTelemetryState }}</span></div>
+                  <pre style="margin:0;max-height:220px;overflow:auto;background:#0c1114;border:1px solid #263237;border-radius:4px;padding:10px;font-family:'Reddit Mono',monospace;font-size:11px;line-height:1.5;color:#9fafbc;white-space:pre-wrap;">{{ adTelemetry }}</pre>
+                  <sc-if value="{{ adTelemetryClosed }}" hint-placeholder-val="{{ false }}">
+                    <button onClick="{{ adReconnectLogs }}" style="margin-top:6px;height:28px;background:#263237;border:1px solid #3b4954;border-radius:4px;color:#00bcff;cursor:pointer;font-family:'Press Start 2P',monospace;font-size:8px;padding:0 10px;" style-hover="border-color:#00bcff;">↻ RECONNECT TELEMETRY</button>
+                  </sc-if>
+                </div>
+              </sc-if>
               </div>
               <div style="background:#151b1e;border:2px solid #3b4954;border-radius:4px;padding:16px;display:flex;flex-direction:column;gap:8px;">
                 <div style="font:500 10px/14px 'Inter',sans-serif;letter-spacing:0.5px;color:#758c9f;">RESOURCES</div>
@@ -2124,6 +2133,12 @@ class Component extends DCLogic {
           adDecomLabel: s.armDecom === a.id ? '☠ CONFIRM?' : '☠ DECOMMISSION',
           adFlightLog: a.flightLog || '',
           adHasFlightLog: !!a.flightLog,
+          adTelemetry: ((a.telemetry && a.telemetry.lines) || []).join('\n') || '… listening for telemetry',
+          adHasTelemetry: !!a.telemetry,
+          adTelemetryClosed: !!(a.telemetry && a.telemetry.closed),
+          adTelemetryState: (a.telemetry && a.telemetry.closed) ? '◼ ' + a.telemetry.closed.toUpperCase() : '● LIVE',
+          adTelemetryFg: (a.telemetry && a.telemetry.closed) ? '#fdc700' : '#00ff6f',
+          adReconnectLogs: () => this.__reopenLogs && this.__reopenLogs(a.id),
           pods: podRows,
           log: (a.history || []).map(h => ({ sha: h.sha, msg: h.msg, result: h.result, fg: '#00ff6f', dur: h.dur, ago: this.timeAgo(h.at) })),
           logEmpty: !(a.history || []).length

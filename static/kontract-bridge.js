@@ -404,9 +404,60 @@
       });
     };
 
+    // ── live runtime telemetry: logs stream follows the stats screen ─
+    let logSub = null;
+    let logAppId = null;
+    const closeLogs = () => {
+      if (logSub) logSub();
+      logSub = null;
+      logAppId = null;
+    };
+    const fmtLog = (l) => {
+      if (l && typeof l === "object") {
+        const pod = l.pod ? String(l.pod).slice(-12) : "";
+        const line = l.line != null ? String(l.line) : JSON.stringify(l);
+        // notice lines arrive without a pod — the stream diagnosing itself
+        return pod ? "[" + pod + "] " + line : "◆ " + line;
+      }
+      return String(l);
+    };
+    const openLogs = (appId) => {
+      const caps = (game.state.platform || {}).caps || [];
+      if (caps.indexOf("runtime-logs") === -1 || typeof kontract.logs !== "function") return;
+      const ga = game.state.apps.find((a) => a.id === appId);
+      const name = realName(ga);
+      if (!name) return;
+      closeLogs();
+      logAppId = appId;
+      game.mutApp(appId, { telemetry: { lines: [], closed: "" } });
+      logSub = kontract.logs(
+        org,
+        name,
+        (l) => {
+          if (game.state.screen !== "appDetail" || game.state.viewAppId !== appId) {
+            closeLogs();
+            return;
+          }
+          const t = (game.state.apps.find((a) => a.id === appId) || {}).telemetry || { lines: [] };
+          const lines = t.lines.concat(fmtLog(l));
+          if (lines.length > 400) lines.splice(0, lines.length - 400);
+          game.mutApp(appId, { telemetry: { lines, closed: "" } });
+        },
+        (reason) => {
+          logSub = null;
+          const t = (game.state.apps.find((a) => a.id === appId) || {}).telemetry || { lines: [] };
+          game.mutApp(appId, {
+            telemetry: { lines: t.lines, closed: reason || "stream ended — reconnect to resume" },
+          });
+        },
+      );
+    };
+    game.__reopenLogs = openLogs;
+
     const origOpenStats = game.openAppStats.bind(game);
     game.openAppStats = function (id, from) {
       origOpenStats(id, from);
+      openLogs(id);
       const ga = game.state.apps.find((a) => a.id === id);
       const name = realName(ga);
       if (!name) return;
@@ -442,6 +493,7 @@
     game.decommission = function (appId) {
       const ga = game.state.apps.find((a) => a.id === appId);
       const name = realName(ga);
+      if (logAppId === appId) closeLogs();
       origDecommission(appId);
       // origDecommission only proceeds past its confirm() by removing the
       // app — if it is gone from state, the player confirmed.
