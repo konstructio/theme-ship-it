@@ -21,6 +21,41 @@
   const BAND_CAPS = { small: [10, 10], medium: [20, 20], large: [30, 30] };
   const hash = (s) => [...s].reduce((a, c) => (a * 31 + c.charCodeAt(0)) | 0, 7);
 
+  // kubernetes quantity -> number (comparable within one dimension)
+  const qty = (v) => {
+    const m = String(v == null ? "" : v).match(/^([0-9.]+)([a-zA-Z]*)$/);
+    if (!m) return NaN;
+    const unit =
+      { m: 1e-3, Ki: 1024, Mi: 1024 ** 2, Gi: 1024 ** 3, Ti: 1024 ** 4, k: 1e3, M: 1e6, G: 1e9, T: 1e12 }[m[2]] || 1;
+    return parseFloat(m[1]) * unit;
+  };
+
+  // org quota -> HUD meter rows the game can render verbatim
+  const quotaBars = (q) => {
+    if (!q || !q.capped) return [];
+    return [
+      ["CPU", q.cpu],
+      ["MEM", q.memory],
+      ["DISK", q.storage],
+    ].map(([k, d]) => {
+      const dim = d || {};
+      const used = qty(dim.used);
+      const limit = qty(dim.limit);
+      const pct = limit > 0 && used >= 0 ? Math.min(100, Math.round((used / limit) * 100)) : 0;
+      const fg = pct >= 90 ? "#fb2c37" : pct >= 70 ? "#fdc700" : "#00bcff";
+      return { k, pct: pct + "%", fg, v: dim.limit ? (dim.used || "0") + "/" + dim.limit : "∞" };
+    });
+  };
+
+  // platform refusal -> in-fiction copy the player can act on
+  const friendlyError = (e) => {
+    const msg = String((e && e.message) || "");
+    if (e && (e.status === 403 || e.status === 422) && /quota|allowance|free|limit|exceed/i.test(msg)) {
+      return "OUT OF FUEL: the org's free-tier allowance is used up. Decommission a rocket or upgrade the plan.";
+    }
+    return msg || "the platform said no — try again";
+  };
+
   const zoneToPlanet = (z) => {
     const caps = BAND_CAPS[z.band] || [10, 10];
     const cpu = parseFloat(z.status && z.status.capacity_cpu) || caps[0];
@@ -105,6 +140,39 @@
   });
 
   const start = (game) => {
+    // ── platform surface: capabilities, entitled sizes, org quota ───
+    const refreshQuota = () => {
+      const caps = (game.state.platform || {}).caps || [];
+      if (caps.indexOf("quota") === -1) return;
+      kontract
+        .quota(org)
+        .then((q) => {
+          const platform = Object.assign({}, game.state.platform, {
+            quotaBars: quotaBars(q),
+            quotaPlan: ((q && q.plan) || "").toUpperCase(),
+          });
+          game.setState({ platform });
+        })
+        .catch(() => {});
+    };
+    game.__refreshQuota = refreshQuota;
+
+    kontract
+      .discover(org)
+      .then((disc) => {
+        const caps = (disc && disc.capabilities) || [];
+        game.setState({
+          platform: Object.assign({}, game.state.platform, {
+            caps,
+            sizes: (disc && disc.app_sizes) || [],
+            quotaBars: [],
+            quotaPlan: "",
+          }),
+        });
+        refreshQuota();
+      })
+      .catch(() => {});
+
     // ── seed real state ─────────────────────────────────────────────
     Promise.all([
       kontract.zones(org).catch(() => []),
@@ -237,6 +305,10 @@
           ? planet
           : game.state.planets.find((p) => p.id && p.id.startsWith("zone:"));
       const zoneRef = zonePlanet ? zonePlanet.id.slice(5) : "";
+      // entitled sizes come from discover(); never ship a size the plan
+      // doesn't allow (the picker only offers entitled keys)
+      const sizes = (game.state.platform || {}).sizes || [];
+      const size = (r.size && sizes.some((s) => s.key === r.size) && r.size) || (sizes[0] && sizes[0].key) || "s";
       kontract
         .shipApp({
           namespace: org,
@@ -249,11 +321,11 @@
           replicas: r.replicas || 1,
           public_url_enabled: true,
           zone_ref: zoneRef,
-          size: "s",
+          size,
         })
+        .then(() => game.__refreshQuota && game.__refreshQuota())
         .catch((e) => {
-          game.showToast &&
-            game.showToast("SHIP SYNC FAILED", "Platform refused the app: " + (e.message || e));
+          game.showToast && game.showToast("SHIP SYNC FAILED", friendlyError(e));
         });
     };
 
@@ -266,7 +338,12 @@
       const ga = game.state.apps.find((a) => a.id === id);
       const name = realName(ga);
       if (name && ga) {
-        kontract.updateApp(org, name, { replicas: ga.replicas }).catch(() => {});
+        kontract
+          .updateApp(org, name, { replicas: ga.replicas })
+          .then(() => game.__refreshQuota && game.__refreshQuota())
+          .catch((e) => {
+            game.showToast && game.showToast("SCALE SYNC FAILED", friendlyError(e));
+          });
       }
     };
 
@@ -347,9 +424,12 @@
       // origDecommission only proceeds past its confirm() by removing the
       // app — if it is gone from state, the player confirmed.
       if (name && !game.state.apps.some((a) => a.id === appId)) {
-        kontract.deleteApp(org, name).catch(() => {
-          game.showToast && game.showToast("DECOMMISSION SYNC FAILED", "The platform kept " + name + " — it will reappear on the next poll.");
-        });
+        kontract
+          .deleteApp(org, name)
+          .then(() => game.__refreshQuota && game.__refreshQuota())
+          .catch(() => {
+            game.showToast && game.showToast("DECOMMISSION SYNC FAILED", "The platform kept " + name + " — it will reappear on the next poll.");
+          });
       }
     };
 

@@ -4,7 +4,7 @@ meta:
   displayName: "Ship It!"
   contract: v2
   profile: game
-  capabilities: [apps, zones, shop, character, universe]
+  capabilities: [apps, zones, shop, character, universe, quota, runtime-logs, app-events, volumes, custom-domains]
 metaphor:
   premise: >
     A retro-arcade space program. Planets are zones, rockets are apps, and a
@@ -23,6 +23,10 @@ vocabulary:
   deploy: { verb: launch }
   shop:     { name: "The Ship Shop" }
   universe: { name: "Universe" }
+  quota:  { name: "Org Fuel Reserves" }
+  logs:   { name: "Flight Telemetry" }
+  volume: { singular: "cargo hold", verb: attach }
+  domain: { singular: "vanity callsign", verb: register }
 zones:
   metaphor: planet
   tiers:

@@ -12,18 +12,33 @@
 const kontract = (() => {
   const embedded = window.parent !== window;
   const pending = new Map();
+  const streams = new Map();
   let seq = 0;
 
   window.addEventListener("message", (event) => {
     const m = event.data;
-    if (!m || m.type !== "kontract-rpc-result" || !pending.has(m.id)) return;
-    const { resolve, reject, timer } = pending.get(m.id);
-    pending.delete(m.id);
-    clearTimeout(timer);
-    if (m.ok) {
-      resolve(m.data);
-    } else {
-      reject(Object.assign(new Error(m.error || "request failed"), { status: m.status }));
+    if (!m) return;
+    if (m.type === "kontract-rpc-result" && pending.has(m.id)) {
+      const { resolve, reject, timer } = pending.get(m.id);
+      pending.delete(m.id);
+      clearTimeout(timer);
+      if (m.ok) {
+        resolve(m.data);
+      } else {
+        reject(Object.assign(new Error(m.error || "request failed"), { status: m.status }));
+      }
+    } else if (m.type === "kontract-stream-event" && streams.has(m.id)) {
+      let payload = m.data;
+      try {
+        payload = JSON.parse(m.data);
+      } catch (_) {
+        /* raw line */
+      }
+      streams.get(m.id).onEvent(payload);
+    } else if (m.type === "kontract-stream-close" && streams.has(m.id)) {
+      const s = streams.get(m.id);
+      streams.delete(m.id);
+      if (s.onClose) s.onClose(m.reason);
     }
   });
 
@@ -43,6 +58,20 @@ const kontract = (() => {
     });
   }
 
+  // Streams: the platform pushes events until you unsubscribe (or it closes
+  // you — onClose fires with a reason; reconnect by subscribing again).
+  function subscribe(op, args, onEvent, onClose) {
+    if (!embedded) return () => {};
+    const id = ++seq;
+    streams.set(id, { onEvent, onClose });
+    window.parent.postMessage({ type: "kontract-stream-open", id, op, args }, "*");
+    return () => {
+      if (streams.delete(id)) {
+        window.parent.postMessage({ type: "kontract-stream-close", id }, "*");
+      }
+    };
+  }
+
   return {
     isLaunched: () => embedded,
     // Back-compat alias for themes written against the token handoff.
@@ -58,7 +87,10 @@ const kontract = (() => {
     redeploy: (org, name) => call("redeploy", org, name),
     buildLogs: (org, name) => call("buildLogs", org, name),
     metrics: (org, name, opts) => call("metrics", org, name, opts),
+    quota: (org) => call("quota", org),
     character: (org) => call("character", org),
     saveCharacter: (org, spec) => call("saveCharacter", org, spec),
+    logs: (org, name, onLine, onClose) => subscribe("logs", [org, name], onLine, onClose),
+    appEvents: (org, onChange, onClose) => subscribe("appEvents", [org], onChange, onClose),
   };
 })();

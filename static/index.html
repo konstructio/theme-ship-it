@@ -277,6 +277,18 @@ input:focus,select:focus{outline:none;border-color:#00ff6f !important;}
                 </div>
               </sc-for>
             </div>
+            <sc-if value="{{ hasQuota }}" hint-placeholder-val="{{ false }}">
+              <div style="border-top:1px solid #263237;padding:12px 16px;display:flex;flex-direction:column;gap:9px;">
+                <div style="display:flex;justify-content:space-between;font-size:10px;color:#758c9f;letter-spacing:0.4px;"><span>ORG FUEL RESERVES</span><span style="color:#4b5d6c;">{{ quotaPlan }}</span></div>
+                <sc-for list="{{ quotaBars }}" as="q" hint-placeholder-count="3">
+                  <div style="display:flex;align-items:center;gap:8px;">
+                    <span style="width:34px;font-family:'Press Start 2P',monospace;font-size:8px;color:{{ q.fg }};">{{ q.k }}</span>
+                    <div style="flex:1;height:8px;background:#263237;border-radius:2px;overflow:hidden;"><div style="height:100%;background:{{ q.fg }};width:{{ q.pct }};transition:width 600ms ease-out;"></div></div>
+                    <span style="min-width:56px;text-align:right;font-size:9.5px;color:#9fafbc;">{{ q.v }}</span>
+                  </div>
+                </sc-for>
+              </div>
+            </sc-if>
             <div style="border-top:1px solid #263237;padding:12px 16px;display:flex;flex-direction:column;gap:8px;">
               <div style="display:flex;justify-content:space-between;font-size:11.5px;"><span style="color:#758c9f;">APP TOKENS</span><span style="color:#dbe1e6;">{{ tokensLabel }}</span></div>
               <div style="display:flex;justify-content:space-between;font-size:11.5px;"><span style="color:#758c9f;">MONTHLY BILL</span><span style="font-family:'Press Start 2P',monospace;font-size:9px;color:#fdc700;">{{ billLabel }}</span></div>
@@ -771,6 +783,14 @@ input:focus,select:focus{outline:none;border-color:#00ff6f !important;}
                 </select>
               </div>
             </div>
+            <sc-if value="{{ hasSizes }}" hint-placeholder-val="{{ false }}">
+              <div style="display:flex;flex-direction:column;gap:6px;">
+                <label style="font-size:12px;font-weight:500;color:#dbe1e6;">Rocket class <span style="color:#758c9f;font-weight:400;">(real compute — your plan's sizes)</span></label>
+                <select value="{{ regSize }}" onChange="{{ setRegSize }}" style="height:40px;background:#263237;border:1px solid #3b4954;border-radius:4px;color:#f3f5f7;padding:0 12px;font-size:13px;cursor:pointer;">
+                  <sc-for list="{{ sizeOptions }}" as="o" hint-placeholder-count="2"><option value="{{ o.v }}">{{ o.label }}</option></sc-for>
+                </select>
+              </div>
+            </sc-if>
             <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:12px;">
               <div style="display:flex;flex-direction:column;gap:6px;">
                 <label style="font-size:12px;font-weight:500;color:#dbe1e6;">CPU / container</label>
@@ -2191,6 +2211,11 @@ class Component extends DCLogic {
       billLabel: '$' + bill + '/MO',
       openShop: this.openShop,
 
+      // org quota meter — the bridge precomputes bars from the real platform
+      hasQuota: !!(s.platform && s.platform.quotaBars && s.platform.quotaBars.length),
+      quotaPlan: (s.platform && s.platform.quotaPlan) || '',
+      quotaBars: (s.platform && s.platform.quotaBars) || [],
+
       // hq — main
       quests,
       showMission: s.screen === 'hq' && !s.questsDone.q1,
@@ -2205,6 +2230,10 @@ class Component extends DCLogic {
       regCpu: String(s.reg.cpu), setRegCpu: (e) => this.setReg('cpu', +e.target.value),
       regMem: String(s.reg.mem), setRegMem: (e) => this.setReg('mem', +e.target.value),
       regReplicas: String(s.reg.replicas), setRegReplicas: (e) => this.setReg('replicas', +e.target.value),
+      hasSizes: !!(s.platform && s.platform.sizes && s.platform.sizes.length),
+      regSize: s.reg.size || ((s.platform && s.platform.sizes && s.platform.sizes[0]) ? s.platform.sizes[0].key : ''),
+      setRegSize: (e) => this.setReg('size', e.target.value),
+      sizeOptions: ((s.platform && s.platform.sizes) || []).map(z => ({ v: z.key, label: z.key.toUpperCase() + ' · ' + z.cpu + ' CPU / ' + z.memory })),
       replicaOptions: (function (self) {
         const maxR = self.regMaxReplicas(s.reg);
         const out = [];
