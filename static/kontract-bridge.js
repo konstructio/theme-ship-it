@@ -56,17 +56,18 @@
     return msg || "the platform said no — try again";
   };
 
+  // zones are purely logical environments now — no bands, no per-zone caps;
+  // the org-wide plan quota is the only capacity gate
   const zoneToPlanet = (z) => {
-    const caps = BAND_CAPS[z.band] || [10, 10];
-    const cpu = parseFloat(z.status && z.status.capacity_cpu) || caps[0];
-    const mem = parseFloat(z.status && z.status.capacity_memory) || caps[1];
+    const cpu = parseFloat(z.status && z.status.capacity_cpu) || 10;
+    const mem = parseFloat(z.status && z.status.capacity_memory) || 10;
     return {
       id: "zone:" + z.name,
       name: (z.display_name || z.name).toUpperCase(),
       look: Math.abs(hash(z.name)) % 5,
       cpu,
       mem,
-      cls: (z.band || "small").toUpperCase(),
+      cls: "ENV",
       createdAt: Date.now(),
       launches: 0,
       cost: z.free ? 0 : undefined,
@@ -175,8 +176,12 @@
           }),
         });
         refreshQuota();
+        if (game.__startAppSync) game.__startAppSync();
       })
-      .catch(() => {});
+      .catch(() => {
+        // no discovery -> no capability knowledge -> classic polling
+        if (game.__startAppSync) game.__startAppSync();
+      });
 
     // ── seed real state ─────────────────────────────────────────────
     Promise.all([
@@ -277,7 +282,6 @@
         .createZone(org, {
           name,
           display_name: d.name,
-          band: (d.cls || "small").toLowerCase() === "medium" ? "medium" : "small",
         })
         .catch((e) => {
           if (!(e && e.status === 409)) {
@@ -293,32 +297,38 @@
       const r = game.state.reg;
       const name = (r.name || "").toLowerCase().replace(/[^a-z0-9-]/g, "-");
       const repo = (r.repo || "").trim();
+      const picked = (game.REPOS || []).find((x) => x.v === repo) || {};
+      const planet = game.state.planets.find((p) => p.id === r.planetId);
+      // environments-first: the platform requires an environment (zone) at
+      // registration — no silent fallback, the player picks a real planet
+      const zonePlanet =
+        planet && planet.id && planet.id.startsWith("zone:")
+          ? planet
+          : game.state.planets.find((p) => p.id && p.id.startsWith("zone:"));
+      const zoneRef = zonePlanet ? zonePlanet.id.slice(5) : "";
+      if (name && repo && !zoneRef) {
+        game.showToast &&
+          game.showToast("NO ENVIRONMENT", "Claim a planet first — every rocket needs a home environment to launch from.");
+        return;
+      }
       origRegister();
       if (!name || !repo) return;
-      const picked = (game.REPOS || []).find((x) => x.v === repo) || {};
       const repoUrl = picked.url || (repo.includes("://") ? repo : repo.includes("/") ? "" : GIT_BASE + repo);
       const repoName = repo.includes("://")
         ? repo.replace(/^https?:\/\/[^/]+\//, "").replace(/\.git$/, "")
         : repo.includes("/")
           ? repo
           : "konstructio/" + repo;
-      const planet = game.state.planets.find((p) => p.id === r.planetId);
-      // never ship zoneless: fall back to the first real zone so the platform
-      // can always resolve a target cluster
-      const zonePlanet =
-        planet && planet.id && planet.id.startsWith("zone:")
-          ? planet
-          : game.state.planets.find((p) => p.id && p.id.startsWith("zone:"));
-      const zoneRef = zonePlanet ? zonePlanet.id.slice(5) : "";
       // entitled sizes come from discover(); never ship a size the plan
       // doesn't allow (the picker only offers entitled keys)
       const sizes = (game.state.platform || {}).sizes || [];
       const size = (r.size && sizes.some((s) => s.key === r.size) && r.size) || (sizes[0] && sizes[0].key) || "s";
       kontract
         .shipApp({
+          // environment omitted on purpose: the zone IS the environment and
+          // the platform mirrors zone_ref into it
           namespace: org,
           app_name: name,
-          environment: "production",
           repo_url: repoUrl,
           repo_name: repoName,
           branch: r.branch || "main",
@@ -559,10 +569,10 @@
       }
     };
 
-    // ── poll real app phases onto the game ──────────────────────────
+    // ── real app phases onto the game: push-driven, poll fallback ───
     setTimeout(refreshSparks, 2500);
     setInterval(refreshSparks, 30000);
-    setInterval(() => {
+    const refreshApps = () => {
       kontract
         .apps(org)
         .then((apps) => {
@@ -610,7 +620,43 @@
           game.setState({ apps: gameApps });
         })
         .catch(() => {});
-    }, 15000);
+    };
+    let pollTimer = null;
+    const startPolling = () => {
+      if (!pollTimer) pollTimer = setInterval(refreshApps, 15000);
+    };
+    let eventsSub = null;
+    const watchApps = () => {
+      if (typeof kontract.appEvents !== "function") {
+        startPolling();
+        return;
+      }
+      eventsSub = kontract.appEvents(
+        org,
+        () => refreshApps(),
+        (reason) => {
+          eventsSub = null;
+          // platform without the stream -> permanent poll; transient drop -> resubscribe
+          if (/unsupported/i.test(reason || "")) {
+            startPolling();
+            return;
+          }
+          setTimeout(watchApps, 5000);
+        },
+      );
+      // one immediate refresh so push-mode starts from current truth
+      refreshApps();
+    };
+    // capability-gated: old platforms ignore stream-opens silently, so only
+    // subscribe when discover() advertised app-events; otherwise poll
+    game.__startAppSync = () => {
+      const caps = (game.state.platform || {}).caps || [];
+      if (caps.indexOf("app-events") !== -1) {
+        watchApps();
+      } else {
+        startPolling();
+      }
+    };
   };
 
   const wait = setInterval(() => {
