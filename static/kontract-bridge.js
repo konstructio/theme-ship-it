@@ -373,6 +373,25 @@
       const x = ((m && m.series) || []).find((s) => s.name === name);
       return (x && x.points) || [];
     };
+    const rawLast = (series, name) => {
+      const m = (series || []).find((x) => x.name === name);
+      const pts = (m && m.points) || [];
+      const last = pts.length ? parseFloat(pts[pts.length - 1][1]) : NaN;
+      return Number.isNaN(last) ? null : last;
+    };
+    const bps = (v) =>
+      v == null
+        ? null
+        : v >= 1048576
+          ? (v / 1048576).toFixed(1) + " MB/S"
+          : v >= 1024
+            ? (v / 1024).toFixed(1) + " KB/S"
+            : Math.round(v) + " B/S";
+    // usage against its real limit ("0.412 CORES · 41% OF 1.000 CORES")
+    const withCeil = (val, limit, fmt) =>
+      val == null ? "—" : limit ? fmt(val) + " · " + Math.round((val / limit) * 100) + "% OF " + fmt(limit) : fmt(val);
+    const fCpu = (v) => v.toFixed(3) + " CORES";
+    const fMem = (v) => (v / 1048576).toFixed(0) + " MB";
     // sparkline feed: refresh cpu/mem series for live apps (best-effort)
     const refreshSparks = () => {
       game.state.apps.forEach((ga) => {
@@ -403,10 +422,13 @@
         .metrics(org, name, { range: "1h", step: "30s" })
         .then((m) => {
           const series = (m && m.series) || [];
+          const rx = rawLast(series, "network_rx");
+          const tx = rawLast(series, "network_tx");
           game.mutApp(id, {
             readouts: {
-              cpu: fmtPoint(series, "cpu"),
-              memory: fmtPoint(series, "memory"),
+              cpu: withCeil(rawLast(series, "cpu"), rawLast(series, "cpu_limit"), fCpu),
+              memory: withCeil(rawLast(series, "memory"), rawLast(series, "memory_limit"), fMem),
+              net: rx == null && tx == null ? "—" : "RX " + (bps(rx) || "—") + " · TX " + (bps(tx) || "—"),
               pods: fmtPoint(series, "pods"),
               restarts: fmtPoint(series, "restarts"),
             },
