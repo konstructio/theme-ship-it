@@ -833,33 +833,43 @@ input:focus,select:focus{outline:none;border-color:#00ff6f !important;}
               </div>
             </div>
             <sc-if value="{{ hasSizes }}" hint-placeholder-val="{{ false }}">
-              <div style="display:flex;flex-direction:column;gap:6px;">
-                <label style="font-size:12px;font-weight:500;color:#dbe1e6;">Rocket class <span style="color:#758c9f;font-weight:400;">(real compute — your plan's sizes)</span></label>
-                <select value="{{ regSize }}" onChange="{{ setRegSize }}" style="height:40px;background:#263237;border:1px solid #3b4954;border-radius:4px;color:#f3f5f7;padding:0 12px;font-size:13px;cursor:pointer;">
-                  <sc-for list="{{ sizeOptions }}" as="o" hint-placeholder-count="2"><option value="{{ o.v }}">{{ o.label }}</option></sc-for>
-                </select>
+              <div style="display:grid;grid-template-columns:2fr 1fr;gap:12px;">
+                <div style="display:flex;flex-direction:column;gap:6px;">
+                  <label style="font-size:12px;font-weight:500;color:#dbe1e6;">Rocket class <span style="color:#758c9f;font-weight:400;">(your plan's sizes)</span></label>
+                  <select value="{{ regSize }}" onChange="{{ setRegSize }}" style="height:40px;background:#263237;border:1px solid #3b4954;border-radius:4px;color:#f3f5f7;padding:0 12px;font-size:13px;cursor:pointer;">
+                    <sc-for list="{{ sizeOptions }}" as="o" hint-placeholder-count="2"><option value="{{ o.v }}">{{ o.label }}</option></sc-for>
+                  </select>
+                </div>
+                <div style="display:flex;flex-direction:column;gap:6px;">
+                  <label style="font-size:12px;font-weight:500;color:#dbe1e6;">Replicas</label>
+                  <select value="{{ regReplicas }}" onChange="{{ setRegReplicas }}" style="height:40px;background:#263237;border:1px solid #3b4954;border-radius:4px;color:#f3f5f7;padding:0 12px;font-size:13px;cursor:pointer;">
+                    <sc-for list="{{ replicaOptions }}" as="o" hint-placeholder-count="2"><option value="{{ o.v }}">{{ o.label }}</option></sc-for>
+                  </select>
+                </div>
               </div>
             </sc-if>
-            <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:12px;">
-              <div style="display:flex;flex-direction:column;gap:6px;">
-                <label style="font-size:12px;font-weight:500;color:#dbe1e6;">CPU / container</label>
-                <select value="{{ regCpu }}" onChange="{{ setRegCpu }}" style="height:40px;background:#263237;border:1px solid #3b4954;border-radius:4px;color:#f3f5f7;padding:0 12px;font-size:13px;cursor:pointer;">
-                  <option value="1">1 CPU</option><option value="2">2 CPU</option><option value="4">4 CPU</option>
-                </select>
+            <sc-if value="{{ noSizes }}" hint-placeholder-val="{{ true }}">
+              <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:12px;">
+                <div style="display:flex;flex-direction:column;gap:6px;">
+                  <label style="font-size:12px;font-weight:500;color:#dbe1e6;">CPU / container</label>
+                  <select value="{{ regCpu }}" onChange="{{ setRegCpu }}" style="height:40px;background:#263237;border:1px solid #3b4954;border-radius:4px;color:#f3f5f7;padding:0 12px;font-size:13px;cursor:pointer;">
+                    <option value="1">1 CPU</option><option value="2">2 CPU</option><option value="4">4 CPU</option>
+                  </select>
+                </div>
+                <div style="display:flex;flex-direction:column;gap:6px;">
+                  <label style="font-size:12px;font-weight:500;color:#dbe1e6;">Memory</label>
+                  <select value="{{ regMem }}" onChange="{{ setRegMem }}" style="height:40px;background:#263237;border:1px solid #3b4954;border-radius:4px;color:#f3f5f7;padding:0 12px;font-size:13px;cursor:pointer;">
+                    <option value="1">1 GB</option><option value="2">2 GB</option><option value="4">4 GB</option>
+                  </select>
+                </div>
+                <div style="display:flex;flex-direction:column;gap:6px;">
+                  <label style="font-size:12px;font-weight:500;color:#dbe1e6;">Replicas</label>
+                  <select value="{{ regReplicas }}" onChange="{{ setRegReplicas }}" style="height:40px;background:#263237;border:1px solid #3b4954;border-radius:4px;color:#f3f5f7;padding:0 12px;font-size:13px;cursor:pointer;">
+                    <sc-for list="{{ replicaOptions }}" as="o" hint-placeholder-count="2"><option value="{{ o.v }}">{{ o.label }}</option></sc-for>
+                  </select>
+                </div>
               </div>
-              <div style="display:flex;flex-direction:column;gap:6px;">
-                <label style="font-size:12px;font-weight:500;color:#dbe1e6;">Memory</label>
-                <select value="{{ regMem }}" onChange="{{ setRegMem }}" style="height:40px;background:#263237;border:1px solid #3b4954;border-radius:4px;color:#f3f5f7;padding:0 12px;font-size:13px;cursor:pointer;">
-                  <option value="1">1 GB</option><option value="2">2 GB</option><option value="4">4 GB</option>
-                </select>
-              </div>
-              <div style="display:flex;flex-direction:column;gap:6px;">
-                <label style="font-size:12px;font-weight:500;color:#dbe1e6;">Replicas</label>
-                <select value="{{ regReplicas }}" onChange="{{ setRegReplicas }}" style="height:40px;background:#263237;border:1px solid #3b4954;border-radius:4px;color:#f3f5f7;padding:0 12px;font-size:13px;cursor:pointer;">
-                  <sc-for list="{{ replicaOptions }}" as="o" hint-placeholder-count="2"><option value="{{ o.v }}">{{ o.label }}</option></sc-for>
-                </select>
-              </div>
-            </div>
+            </sc-if>
             <div style="border:1px solid #263237;border-radius:4px;padding:10px 12px;background:#111518;display:flex;flex-direction:column;gap:6px;">
               <div style="display:flex;justify-content:space-between;font-size:11px;color:#758c9f;"><span>PLANET LOAD AFTER LAUNCH</span><span style="color:{{ capFg }};">{{ capNote }}</span></div>
               <sc-if value="{{ capFull }}" hint-placeholder-val="{{ false }}">
@@ -2312,8 +2322,16 @@ class Component extends DCLogic {
       regMem: String(s.reg.mem), setRegMem: (e) => this.setReg('mem', +e.target.value),
       regReplicas: String(s.reg.replicas), setRegReplicas: (e) => this.setReg('replicas', +e.target.value),
       hasSizes: !!(s.platform && s.platform.sizes && s.platform.sizes.length),
+      noSizes: !(s.platform && s.platform.sizes && s.platform.sizes.length),
       regSize: s.reg.size || ((s.platform && s.platform.sizes && s.platform.sizes[0]) ? s.platform.sizes[0].key : ''),
-      setRegSize: (e) => this.setReg('size', e.target.value),
+      // Picking a class also syncs the fiction's cpu/mem to the size's REAL
+      // numbers so the planet-load preview tells the truth when launched.
+      setRegSize: (e) => {
+        const v = e.target.value;
+        const sz = ((s.platform && s.platform.sizes) || []).find(x => x.key === v);
+        const num = (q) => { const m = /^([0-9.]+)(m|Gi|Mi)?$/.exec(String(q || '')); if (!m) return 1; const n = parseFloat(m[1]); return m[2] === 'm' ? n / 1000 : m[2] === 'Mi' ? n / 1024 : n; };
+        this.setState({ reg: Object.assign({}, this.state.reg, { size: v, cpu: sz ? num(sz.cpu) : this.state.reg.cpu, mem: sz ? num(sz.memory) : this.state.reg.mem }) });
+      },
       sizeOptions: ((s.platform && s.platform.sizes) || []).map(z => ({ v: z.key, label: z.key.toUpperCase() + ' · ' + z.cpu + ' CPU / ' + z.memory })),
       replicaOptions: (function (self) {
         const maxR = self.regMaxReplicas(s.reg);
