@@ -199,15 +199,16 @@
             quotaUsedMem: usedMem,
           });
           game.setState({ platform });
-          resizePlanets();
+          // setState can commit async — resize with the fresh values in hand
+          resizePlanets(platform);
         })
         .catch(() => {});
     };
     // Zones have no caps of their own: each planet's ceiling is what it uses
     // plus the org pool's remainder, so consumption anywhere shrinks headroom
     // everywhere — exactly the platform's admission math.
-    const resizePlanets = () => {
-      const plat = game.state.platform || {};
+    const resizePlanets = (platOverride) => {
+      const plat = platOverride || game.state.platform || {};
       if (plat.quotaRemainCpu == null) return;
       let changed = false;
       const r1 = (v) => Math.round(v * 10) / 10;
