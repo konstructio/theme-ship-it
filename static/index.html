@@ -6,6 +6,27 @@
 <script src="./support.js"></script>
 </head>
 <body>
+<script>
+/* Standalone gate: this theme never pretends. Outside Konstruct there is no
+   identity, no org, and no data — so there is no game. Any sandbox save a
+   previous build left behind is wiped on sight. */
+(function () {
+  if (window.parent !== window) return; // launched inside Konstruct: play on
+  try { localStorage.removeItem('shipit-save-v1'); } catch (_) {}
+  var gate = document.createElement('div');
+  gate.id = 'auth-gate';
+  gate.setAttribute('style', 'position:fixed;inset:0;z-index:2147483647;background:#0b0f12;display:flex;align-items:center;justify-content:center;font-family:Inter,sans-serif;');
+  gate.innerHTML =
+    '<div style="max-width:520px;padding:40px;text-align:center;display:flex;flex-direction:column;gap:18px;align-items:center;">' +
+    '<div style="font-family:\'Press Start 2P\',monospace;font-size:26px;color:#00ff6f;text-shadow:3px 3px 0 #063;">SHIP IT!</div>' +
+    '<div style="font-family:\'Press Start 2P\',monospace;font-size:10px;color:#fdc700;letter-spacing:1px;">AUTHENTICATION REQUIRED</div>' +
+    '<p style="margin:0;font-size:14px;line-height:1.7;color:#9fafbc;">This theme only flies inside <span style="color:#f3f5f7;font-weight:600;">Konstruct</span>. Open your Konstruct workspace and launch <span style="color:#f3f5f7;font-weight:600;">Ship It!</span> from Kontract Themes — it plays with your organization\'s real planets and rockets, as you.</p>' +
+    '<p style="margin:0;font-size:11px;color:#4b5d6c;">No samples, no pretend mode — this address carries no identity on purpose.</p>' +
+    '</div>';
+  var mount = function () { document.body.appendChild(gate); };
+  if (document.body) { mount(); } else { document.addEventListener('DOMContentLoaded', mount); }
+})();
+</script>
 <x-dc>
 <helmet>
 <link rel="stylesheet" href="_ds/civo-design-system-8f586b07-10a4-4893-a4d8-a9845a4a70fa/colors_and_type.css">

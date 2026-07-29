@@ -103,7 +103,7 @@ surprises:
 storyline:
   slots:
     references: ["civo", "konstruct"]
-    flavor: ["GG Organization arcade fiction in standalone mode only", "hero callsign generator"]
+    flavor: ["hero callsign generator"]  # standalone shows an auth gate — no fiction mode
 generation:
   promptVersion: 0
   model: "hand-authored (flagship reference theme)"
