@@ -490,7 +490,7 @@
       const name = realName(ga);
       if (!name) return;
       kontract
-        .updateApp(org, name, { volume: { size } })
+        .updateApp(org, name, { volume: { size, mount_path: "/data" } })
         .then(() => {
           game.mutApp(appId, { volumeSize: size, replicas: 1 });
           game.showToast && game.showToast("CARGO HOLD ATTACHED", size + " persistent storage — rocket locked to 1 replica.");
