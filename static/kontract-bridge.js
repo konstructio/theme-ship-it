@@ -483,11 +483,13 @@
         })
         .catch((e) => game.showToast && game.showToast("CARGO SYNC FAILED", friendlyError(e)));
     };
-    game.__setDomain = (appId) => {
+    // value comes from the in-game input — sandboxed iframes block
+    // window.prompt/confirm, so no native dialogs
+    game.__setDomain = (appId, next) => {
       const ga = game.state.apps.find((a) => a.id === appId);
       const name = realName(ga);
       if (!name) return;
-      const next = (window.prompt("VANITY CALLSIGN — custom domain for this rocket (empty to clear):", ga.customDomain || "") || "").trim();
+      next = String(next == null ? "" : next).trim();
       if (next === (ga.customDomain || "")) return;
       kontract
         .updateApp(org, name, { custom_domain: next })
@@ -503,6 +505,7 @@
     const origOpenStats = game.openAppStats.bind(game);
     game.openAppStats = function (id, from) {
       origOpenStats(id, from);
+      game.setState({ domainDraft: null });
       openLogs(id);
       const ga = game.state.apps.find((a) => a.id === id);
       const name = realName(ga);

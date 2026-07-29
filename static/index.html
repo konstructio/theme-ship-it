@@ -743,10 +743,11 @@ input:focus,select:focus{outline:none;border-color:#00ff6f !important;}
                 <sc-if value="{{ adShowDomain }}" hint-placeholder-val="{{ false }}">
                   <div style="display:flex;align-items:center;justify-content:space-between;gap:10px;font-size:12px;border-top:1px solid #1d2629;padding-top:10px;">
                     <span style="color:#758c9f;">VANITY CALLSIGN</span>
-                    <span style="display:flex;align-items:center;gap:8px;">
-                      <span style="font-family:'Reddit Mono',monospace;font-size:11.5px;color:{{ adDomainFg }};">{{ adDomainLabel }}</span>
-                      <button onClick="{{ adEditDomain }}" style="height:26px;padding:0 10px;background:#263237;border:1px solid #3b4954;border-radius:4px;color:#fdc700;cursor:pointer;font-family:'Press Start 2P',monospace;font-size:8px;" style-hover="border-color:#fdc700;">{{ adDomainBtn }}</button>
-                    </span>
+                    <span style="font-family:'Reddit Mono',monospace;font-size:11.5px;color:{{ adDomainFg }};">{{ adDomainLabel }}</span>
+                  </div>
+                  <div style="display:flex;align-items:center;gap:8px;">
+                    <input value="{{ adDomainDraft }}" onChange="{{ adSetDomainDraft }}" style="flex:1;height:32px;background:#263237;border:1px solid #3b4954;border-radius:4px;color:#f3f5f7;padding:0 10px;font-size:12px;font-family:'Reddit Mono',monospace;">
+                    <button onClick="{{ adSaveDomain }}" style="height:32px;padding:0 12px;background:#263237;border:1px solid #3b4954;border-radius:4px;color:#fdc700;cursor:pointer;font-family:'Press Start 2P',monospace;font-size:8px;" style-hover="border-color:#fdc700;">SAVE</button>
                   </div>
                   <sc-if value="{{ adDomainPending }}" hint-placeholder-val="{{ false }}">
                     <div style="border:1px solid #263237;border-radius:4px;padding:8px 10px;background:#111518;display:flex;flex-direction:column;gap:5px;">
@@ -2192,8 +2193,13 @@ class Component extends DCLogic {
           adCargoOptions: ['1Gi', '5Gi', '10Gi'].map(sz => ({ label: sz, attach: () => this.__attachVolume && this.__attachVolume(a.id, sz) })),
           adDomainLabel: a.customDomain ? a.customDomain + (a.domainVerified ? ' ✓ VERIFIED' : ' · UNVERIFIED') : 'none',
           adDomainFg: a.customDomain ? (a.domainVerified ? '#00ff6f' : '#fdc700') : '#758c9f',
-          adDomainBtn: a.customDomain ? 'CHANGE' : '+ REGISTER',
-          adEditDomain: () => this.__setDomain && this.__setDomain(a.id),
+          adDomainDraft: s.domainDraft != null ? s.domainDraft : (a.customDomain || ''),
+          adSetDomainDraft: (e) => this.setState({ domainDraft: e.target.value }),
+          adSaveDomain: () => {
+            const v = (s.domainDraft != null ? s.domainDraft : (a.customDomain || '')).trim();
+            this.setState({ domainDraft: null });
+            if (this.__setDomain) this.__setDomain(a.id, v);
+          },
           adDomainPending: !!(a.customDomain && !a.domainVerified && a.domainToken),
           adDomainHost: '_konduit-challenge.' + (a.customDomain || ''),
           adDomainToken: 'konduit-verify=' + (a.domainToken || ''),
