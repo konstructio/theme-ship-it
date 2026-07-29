@@ -232,8 +232,13 @@
       .then(async (repos) => {
         let list = (Array.isArray(repos) ? repos : [])
           .map((r) => {
-            const name = (r.repo_name || r.name || "").split("/").pop();
-            return name ? { v: name, label: name + (r.namespace ? " \u00b7 " + r.namespace : "") } : null;
+            // carry the real identity: without url/full the register path
+            // guesses a host and ships a repo that may not exist
+            const full = r.repo_name || r.name || "";
+            const name = full.split("/").pop();
+            return name
+              ? { v: name, label: name + (r.namespace ? " \u00b7 " + r.namespace : ""), url: r.repo_url || "", full }
+              : null;
           })
           .filter(Boolean);
         if (!list.length) {
@@ -314,11 +319,13 @@
       origRegister();
       if (!name || !repo) return;
       const repoUrl = picked.url || (repo.includes("://") ? repo : repo.includes("/") ? "" : GIT_BASE + repo);
-      const repoName = repo.includes("://")
-        ? repo.replace(/^https?:\/\/[^/]+\//, "").replace(/\.git$/, "")
-        : repo.includes("/")
-          ? repo
-          : "konstructio/" + repo;
+      const repoName =
+        picked.full ||
+        (repo.includes("://")
+          ? repo.replace(/^https?:\/\/[^/]+\//, "").replace(/\.git$/, "")
+          : repo.includes("/")
+            ? repo
+            : "konstructio/" + repo);
       // entitled sizes come from discover(); never ship a size the plan
       // doesn't allow (the picker only offers entitled keys)
       const sizes = (game.state.platform || {}).sizes || [];
