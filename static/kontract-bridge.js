@@ -606,6 +606,35 @@
     };
     // value comes from the in-game input — sandboxed iframes block
     // window.prompt/confirm, so no native dialogs
+    // Detach = delete the volume AND its data; two-click armed, since
+    // sandboxed iframes block native confirm dialogs.
+    game.__detachVolume = (appId) => {
+      const ga = game.state.apps.find((a) => a.id === appId);
+      const name = realName(ga);
+      if (!name) return;
+      if (game.state.armDetach !== appId) {
+        game.setState({ armDetach: appId });
+        game.showToast &&
+          game.showToast("ARMED", "Press DETACH again within 5s — the cargo hold and ALL DATA on it will be destroyed.", "#fb2c37");
+        setTimeout(() => {
+          if (game.state.armDetach === appId) game.setState({ armDetach: null });
+        }, 5000);
+        return;
+      }
+      game.setState({ armDetach: null });
+      kontract
+        .updateApp(org, name, { volume: { size: "" } })
+        .then(() => {
+          game.mutApp(appId, { volumeSize: "" });
+          game.showToast && game.showToast("CARGO HOLD JETTISONED", "Volume and data destroyed. The rocket may scale again.", "#fdc700");
+          refreshQuota();
+        })
+        .catch((e) => {
+          if (e && e.status === 404) refreshApps();
+          game.showToast && game.showToast("JETTISON FAILED", friendlyError(e));
+        });
+    };
+
     game.__setDomain = (appId, next) => {
       const ga = game.state.apps.find((a) => a.id === appId);
       const name = realName(ga);

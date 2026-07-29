@@ -749,7 +749,10 @@ input:focus,select:focus{outline:none;border-color:#00ff6f !important;}
                   <div style="display:flex;align-items:center;justify-content:space-between;gap:10px;font-size:12px;">
                     <span style="color:#758c9f;">CARGO HOLD</span>
                     <sc-if value="{{ adHasVolume }}" hint-placeholder-val="{{ false }}">
-                      <span style="font-family:'Reddit Mono',monospace;font-size:11.5px;color:#00ff6f;">▣ {{ adVolume }} · PERSISTENT · 1 REPLICA</span>
+                      <span style="display:flex;align-items:center;gap:8px;">
+                        <span style="font-family:'Reddit Mono',monospace;font-size:11.5px;color:#00ff6f;">▣ {{ adVolume }} · PERSISTENT · 1 REPLICA</span>
+                        <button onClick="{{ adDetachVolume }}" style="height:26px;padding:0 10px;background:#263237;border:1px solid #3b4954;border-radius:4px;color:#fb2c37;cursor:pointer;font-family:'Press Start 2P',monospace;font-size:8px;" style-hover="border-color:#fb2c37;">{{ adDetachLabel }}</button>
+                      </span>
                     </sc-if>
                     <sc-if value="{{ adNoVolume }}" hint-placeholder-val="{{ false }}">
                       <span style="display:flex;gap:6px;">
@@ -2234,6 +2237,8 @@ class Component extends DCLogic {
           adNoVolume: !a.volumeSize,
           adVolume: a.volumeSize || '',
           adCargoOptions: ['1Gi', '5Gi', '10Gi'].map(sz => ({ label: sz, attach: () => this.__attachVolume && this.__attachVolume(a.id, sz) })),
+          adDetachLabel: s.armDetach === a.id ? '☠ SURE? DATA DIES' : '☠ DETACH',
+          adDetachVolume: () => this.__detachVolume && this.__detachVolume(a.id),
           adDomainLabel: a.customDomain ? a.customDomain + (a.domainVerified ? ' ✓ VERIFIED' : ' · UNVERIFIED') : 'none',
           adDomainFg: a.customDomain ? (a.domainVerified ? '#00ff6f' : '#fdc700') : '#758c9f',
           adDomainDraft: s.domainDraft != null ? s.domainDraft : (a.customDomain || ''),
