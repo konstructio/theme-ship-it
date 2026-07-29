@@ -30,6 +30,14 @@
     return parseFloat(m[1]) * unit;
   };
 
+  // Kubernetes quantity -> Konduit's friendly voice ("17Gi" -> "17 GB"),
+  // so every theme quotes the org's allowance the same way.
+  const prettyQty = (raw) =>
+    String(raw == null ? "" : raw)
+      .replace(/Gi$/, " GB")
+      .replace(/Mi$/, " MB")
+      .replace(/Ti$/, " TB");
+
   // org quota -> HUD meter rows the game can render verbatim
   const quotaBars = (q) => {
     if (!q || !q.capped) return [];
@@ -43,7 +51,7 @@
       const limit = qty(dim.limit);
       const pct = limit > 0 && used >= 0 ? Math.min(100, Math.round((used / limit) * 100)) : 0;
       const fg = pct >= 90 ? "#fb2c37" : pct >= 70 ? "#fdc700" : "#00bcff";
-      return { k, pct: pct + "%", fg, v: dim.limit ? (dim.used || "0") + "/" + dim.limit : "∞" };
+      return { k, pct: pct + "%", fg, v: dim.limit ? prettyQty(dim.used || "0") + "/" + prettyQty(dim.limit) : "∞" };
     });
   };
 
