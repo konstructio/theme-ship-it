@@ -2061,7 +2061,7 @@ class Component extends DCLogic {
         launch: () => this.startLaunch(a.id),
         showPush: a.status === 'live',
         push: () => this.pushCommit(a.id),
-        hasUrl: a.status === 'live', url: a.url,
+        hasUrl: a.status === 'live', url: a.url, liveHref: a.url ? 'https://' + a.url : '#',
         sizeLabel: a.cpu + ' CPU · ' + a.mem + ' GB / pod',
         hasSpark: a.status === 'live' && !!(a.metricsCpu && a.metricsCpu.length > 1),
         sparkCpu: this.sparkPath(a.metricsCpu, 60, 16),
@@ -2476,7 +2476,7 @@ class Component extends DCLogic {
       planetBigBs: sp && launchAppData ? S.planetShadow((s.planets.find(x => x.id === launchAppData.planetId) || { look: 0 }).look, 16) : '',
       scenePods,
       bgZones: !!(l && l.swap) && (this.props.showBgZones ?? false),
-      urlOn: phase === 'serve', launchUrl: launchAppData ? launchAppData.url : '',
+      urlOn: phase === 'serve', launchUrl: launchAppData ? launchAppData.url : '', launchHref: launchAppData && launchAppData.url ? 'https://' + launchAppData.url : '#',
 
       // level up
       luOpen: !!s.lu, luLevel: s.lu ? s.lu.level : 0,
@@ -2519,7 +2519,7 @@ class Component extends DCLogic {
 
       // app detail
       adName: ad ? ad.name : '', adStatusLabel: ad ? ad.statusLabel : '', adStatusFg: ad ? ad.fg : '#9fafbc', adStatusAnim: ad ? ad.anim : 'none',
-      adHasUrl: !!(ad && ad.hasUrl), adUrl: ad ? ad.url : '',
+      adHasUrl: !!(ad && ad.hasUrl), adUrl: ad ? ad.url : '', adHref: ad && ad.url ? 'https://' + ad.url : '#',
       adChecks: ad ? ad.checks : '0', adUptime: ad ? ad.uptime : '—', adDeploys: ad ? ad.deploys : '0',
       adDeploy: ad ? ad.deploy : [], adRes: ad ? ad.res : [],
       adPods: ad ? ad.pods : [], adLog: ad ? ad.log : [], adLogEmpty: !!(ad && ad.logEmpty),
