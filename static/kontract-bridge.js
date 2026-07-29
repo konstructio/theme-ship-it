@@ -430,7 +430,7 @@
     const fmtLog = (l) => {
       if (l && typeof l === "object") {
         const pod = l.pod ? String(l.pod).slice(-12) : "";
-        const line = l.line != null ? String(l.line) : JSON.stringify(l);
+        const line = l.line != null ? String(l.line) : l.message != null ? String(l.message) : JSON.stringify(l);
         // notice lines arrive without a pod — the stream diagnosing itself
         return pod ? "[" + pod + "] " + line : "◆ " + line;
       }
