@@ -496,7 +496,10 @@
           game.showToast && game.showToast("CARGO HOLD ATTACHED", size + " persistent storage — rocket locked to 1 replica.");
           refreshQuota();
         })
-        .catch((e) => game.showToast && game.showToast("CARGO SYNC FAILED", friendlyError(e)));
+        .catch((e) => {
+          if (e && e.status === 404) refreshApps();
+          game.showToast && game.showToast("CARGO SYNC FAILED", friendlyError(e));
+        });
     };
     // value comes from the in-game input — sandboxed iframes block
     // window.prompt/confirm, so no native dialogs
@@ -514,7 +517,10 @@
             game.showToast && game.showToast("CALLSIGN REGISTERED", "Prove ownership: add the TXT record shown on the rocket screen.");
           }
         })
-        .catch((e) => game.showToast && game.showToast("CALLSIGN SYNC FAILED", friendlyError(e)));
+        .catch((e) => {
+          if (e && e.status === 404) refreshApps();
+          game.showToast && game.showToast("CALLSIGN SYNC FAILED", friendlyError(e));
+        });
     };
 
     const origOpenStats = game.openAppStats.bind(game);
@@ -595,12 +601,18 @@
         .apps(org)
         .then((apps) => {
           const list = Array.isArray(apps) ? apps : [];
-          if (!list.length) return;
-          const byName = new Map(list.map((a) => [a.app_name || a.name, a]));
-          const gameApps = game.state.apps.map((ga) => {
-            const real = byName.get(ga.name);
-            if (!real) return ga;
+          const prev = game.state.apps;
+          const prevById = new Map(prev.map((p) => [p.id, p]));
+          const launchId = game.state.launch && game.state.launch.appId;
+          // True reconcile against server truth: every real app is present
+          // (new ones APPEAR), deleted ones VANISH — no ghost cards to act on.
+          // Local per-app state (history, sparks, telemetry) survives a match.
+          const next = list.map((real) => {
+            const ga = prevById.get("app:" + real.name);
             const st = real.status || {};
+            if (!ga) return appToGame(real, game.state.planets);
+            // never interrupt the cinematic; it settles on its own
+            if (launchId === ga.id) return ga;
             const status = phaseToStatus(st.phase);
             const url = (st.url || "").replace("https://", "");
             const buildRef = st.last_build_ref || st.build_sha || "";
@@ -611,8 +623,6 @@
                 (ga.name + " — " + (st.message || "the platform reported a failure")).toUpperCase(),
               );
             }
-            // never interrupt the cinematic; it settles on its own
-            if (game.state.launch && game.state.launch.appId === ga.id) return ga;
             // celebrate the ship: the FIRST transition to live plays the
             // full liftoff — the emotional peak must not happen silently
             if (
@@ -635,7 +645,14 @@
               domainVerified: !!st.domain_verified,
             });
           });
-          game.setState({ apps: gameApps });
+          // standalone fiction apps (non-platform ids) stay; a real app whose
+          // liftoff is mid-cinematic gets one grace pass before it disappears
+          const keep = prev.filter(
+            (p) =>
+              !(p.id && p.id.indexOf("app:") === 0) ||
+              (p.id === launchId && !list.some((r) => "app:" + r.name === p.id)),
+          );
+          game.setState({ apps: next.concat(keep) });
         })
         .catch(() => {});
     };
