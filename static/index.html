@@ -472,7 +472,7 @@ input:focus,select:focus{outline:none;border-color:#00ff6f !important;}
                     </sc-if>
                   </div>
                   <div style="font-family:'Press Start 2P',monospace;font-size:9px;color:#f3f5f7;line-height:1.6;">{{ i.name }}</div>
-                  <div style="font-size:11.5px;color:#9fafbc;line-height:1.5;min-height:32px;">{{ i.desc }}</div>
+                  <div style="font-size:11.5px;color:#9fafbc;line-height:1.5;min-height:32px;flex:1;">{{ i.desc }}</div>
                   <div style="display:flex;align-items:center;gap:10px;">
                     <span style="font-family:'Press Start 2P',monospace;font-size:10px;color:#fdc700;">{{ i.price }}</span>
                     <div style="flex:1;"></div>
@@ -1545,6 +1545,9 @@ class Component extends DCLogic {
   setLaunch(patch) { if (this.state.launch) this.setState({ launch: Object.assign({}, this.state.launch, patch) }); }
   runBuild(f) {
     const a = this.launchApp();
+    // The tail of the terminal is TRUE state, not theater: checkmarks only
+    // for what the platform verifiably did, real digest, real duration.
+    const live = a.status === 'live' || a.launched;
     const lines = [
       '> CLONING ' + a.repo + ' @ main',
       '> COMMIT ' + (a.commit || this.sha()) + " '" + (a.msg || 'feat: make it awesome') + "'",
@@ -1552,10 +1555,10 @@ class Component extends DCLogic {
       '> RESTORING CACHE...',
       '> COMPILING PRODUCTION BUNDLE...',
       '> BAKING OCI IMAGE LAYERS...',
-      '> IMAGE sha256:ea71feff ✓',
-      '> PUSH → CLUSTER REGISTRY ✓',
-      '> GITOPS SYNC VIA ARGO ✓',
-      '> BUILD GREEN — 4M12S ✓'
+      a.imageSha ? '> IMAGE ' + String(a.imageSha).split('@').pop().slice(0, 19) + '… ✓' : '> IMAGE BAKING…',
+      live ? '> PUSH → CLUSTER REGISTRY ✓' : '> PUSH → CLUSTER REGISTRY…',
+      live ? '> GITOPS SYNC VIA ARGO ✓' : '> HANDOFF TO GITOPS — ARGO RECONCILING…',
+      live ? '> BUILD GREEN' + (a.buildTime ? ' — ' + a.buildTime : '') + ' ✓' : '> REAL BUILD STILL RUNNING — TELEMETRY HAS THE TRUTH'
     ];
     lines.forEach((t, i) => this.later(() => {
       if (!this.state.launch) return;
@@ -2440,7 +2443,9 @@ class Component extends DCLogic {
       hatchH: ['pills', 'helmet', 'walk', 'board'].indexOf(phase) !== -1 ? '30px' : '0px',
       flameOn: phase === 'liftoff',
       flameBs: sp ? S.shadow((s.flameFlip ? S.FLAME_A : S.FLAME_B).rows, (s.flameFlip ? S.FLAME_A : S.FLAME_B).colors, 5, 0, 0) : '',
-      launchHeroLayers: (['pills', 'helmet', 'walk', 'board'].indexOf(phase) !== -1 && sp) ? S.heroLayers(phase === 'pills' ? s.hero : Object.assign({}, s.hero, { helmet: s.hero.helmet === 0 ? 1 : s.hero.helmet }), 5) : [],
+      // The helmet visibly goes ON at the helmet beat: bare head during pills,
+      // then the hero's own helmet (bubble if they own none) from there on.
+      launchHeroLayers: (['pills', 'helmet', 'walk', 'board'].indexOf(phase) !== -1 && sp) ? S.heroLayers(phase === 'pills' ? Object.assign({}, s.hero, { helmet: 0 }) : Object.assign({}, s.hero, { helmet: s.hero.helmet === 0 ? 1 : s.hero.helmet }), 5) : [],
       heroX: (phase === 'pills' || phase === 'helmet') ? 'calc(50% - 230px)' : (phase === 'walk' ? 'calc(50% - 95px)' : 'calc(50% - 72px)'),
       heroOp: phase === 'board' ? 0 : 1,
       helmetFlash: phase === 'helmet',

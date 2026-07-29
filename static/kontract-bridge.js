@@ -66,6 +66,15 @@
     return SIZE_FALLBACK[key] || [1, 1];
   };
 
+  // Real build durations: first sighting of an in-flight phase starts the
+  // clock; reaching live stamps mm:ss. Only truthful when we watched the
+  // transition — apps already live when we arrived keep no duration.
+  const buildStarts = {};
+  const fmtDur = (ms) => {
+    const s = Math.max(1, Math.round(ms / 1000));
+    return Math.floor(s / 60) + "M" + String(s % 60).padStart(2, "0") + "S";
+  };
+
   // platform refusal -> in-fiction copy the player can act on
   const friendlyError = (e) => {
     const msg = String((e && e.message) || "");
@@ -763,8 +772,14 @@
             ) {
               setTimeout(() => { if (!game.state.launch) origStartLaunch(ga.id); }, 400);
             }
+            if (status === "building" && !buildStarts[ga.id]) buildStarts[ga.id] = Date.now();
+            const buildTime =
+              ga.buildTime ||
+              (status === "live" && buildStarts[ga.id] ? fmtDur(Date.now() - buildStarts[ga.id]) : "");
+            if (status === "live") delete buildStarts[ga.id];
             return Object.assign({}, ga, {
               status,
+              buildTime,
               url: url || ga.url,
               launched: ga.launched || status === "live",
               commit: buildRef ? String(buildRef).slice(0, 7) : ga.commit,
