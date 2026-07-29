@@ -107,6 +107,11 @@
       imageSha: st.image || "",
       msg: st.message || "",
       lastLaunch: st.phase === "Live" ? Date.now() : null,
+      // cargo hold (persistent volume) + vanity callsign (custom domain)
+      volumeSize: (a.volume && a.volume.size) || "",
+      customDomain: a.custom_domain || "",
+      domainToken: st.domain_token || "",
+      domainVerified: !!st.domain_verified,
     };
   };
 
@@ -454,6 +459,37 @@
     };
     game.__reopenLogs = openLogs;
 
+    // ── cargo hold (persistent volume) + vanity callsign (domain) ───
+    game.__attachVolume = (appId, size) => {
+      const ga = game.state.apps.find((a) => a.id === appId);
+      const name = realName(ga);
+      if (!name) return;
+      kontract
+        .updateApp(org, name, { volume: { size } })
+        .then(() => {
+          game.mutApp(appId, { volumeSize: size, replicas: 1 });
+          game.showToast && game.showToast("CARGO HOLD ATTACHED", size + " persistent storage — rocket locked to 1 replica.");
+          refreshQuota();
+        })
+        .catch((e) => game.showToast && game.showToast("CARGO SYNC FAILED", friendlyError(e)));
+    };
+    game.__setDomain = (appId) => {
+      const ga = game.state.apps.find((a) => a.id === appId);
+      const name = realName(ga);
+      if (!name) return;
+      const next = (window.prompt("VANITY CALLSIGN — custom domain for this rocket (empty to clear):", ga.customDomain || "") || "").trim();
+      if (next === (ga.customDomain || "")) return;
+      kontract
+        .updateApp(org, name, { custom_domain: next })
+        .then(() => {
+          game.mutApp(appId, { customDomain: next, domainVerified: false, domainToken: "" });
+          if (next) {
+            game.showToast && game.showToast("CALLSIGN REGISTERED", "Prove ownership: add the TXT record shown on the rocket screen.");
+          }
+        })
+        .catch((e) => game.showToast && game.showToast("CALLSIGN SYNC FAILED", friendlyError(e)));
+    };
+
     const origOpenStats = game.openAppStats.bind(game);
     game.openAppStats = function (id, from) {
       origOpenStats(id, from);
@@ -565,6 +601,10 @@
               imageSha: st.image || ga.imageSha,
               msg: st.message || ga.msg,
               lastLaunch: status === "live" && !ga.lastLaunch ? Date.now() : ga.lastLaunch,
+              volumeSize: (real.volume && real.volume.size) || "",
+              customDomain: real.custom_domain || "",
+              domainToken: st.domain_token || "",
+              domainVerified: !!st.domain_verified,
             });
           });
           game.setState({ apps: gameApps });

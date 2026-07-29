@@ -721,6 +721,45 @@ input:focus,select:focus{outline:none;border-color:#00ff6f !important;}
                 </sc-for>
               </div>
             </div>
+            <sc-if value="{{ adHasCargoPanel }}" hint-placeholder-val="{{ false }}">
+              <div style="background:#151b1e;border:2px solid #3b4954;border-radius:4px;padding:16px;display:flex;flex-direction:column;gap:10px;">
+                <div style="font:500 10px/14px 'Inter',sans-serif;letter-spacing:0.5px;color:#758c9f;">CARGO &amp; CALLSIGN</div>
+                <sc-if value="{{ adShowCargo }}" hint-placeholder-val="{{ false }}">
+                  <div style="display:flex;align-items:center;justify-content:space-between;gap:10px;font-size:12px;">
+                    <span style="color:#758c9f;">CARGO HOLD</span>
+                    <sc-if value="{{ adHasVolume }}" hint-placeholder-val="{{ false }}">
+                      <span style="font-family:'Reddit Mono',monospace;font-size:11.5px;color:#00ff6f;">▣ {{ adVolume }} · PERSISTENT · 1 REPLICA</span>
+                    </sc-if>
+                    <sc-if value="{{ adNoVolume }}" hint-placeholder-val="{{ false }}">
+                      <span style="display:flex;gap:6px;">
+                        <sc-for list="{{ adCargoOptions }}" as="o" hint-placeholder-count="3">
+                          <button onClick="{{ o.attach }}" style="height:26px;padding:0 10px;background:#263237;border:1px solid #3b4954;border-radius:4px;color:#00bcff;cursor:pointer;font-family:'Press Start 2P',monospace;font-size:8px;" style-hover="border-color:#00bcff;">+ {{ o.label }}</button>
+                        </sc-for>
+                      </span>
+                    </sc-if>
+                  </div>
+                  <div style="font-size:10px;color:#4b5d6c;">attaching a cargo hold gives this rocket a persistent disk and locks it to 1 replica</div>
+                </sc-if>
+                <sc-if value="{{ adShowDomain }}" hint-placeholder-val="{{ false }}">
+                  <div style="display:flex;align-items:center;justify-content:space-between;gap:10px;font-size:12px;border-top:1px solid #1d2629;padding-top:10px;">
+                    <span style="color:#758c9f;">VANITY CALLSIGN</span>
+                    <span style="display:flex;align-items:center;gap:8px;">
+                      <span style="font-family:'Reddit Mono',monospace;font-size:11.5px;color:{{ adDomainFg }};">{{ adDomainLabel }}</span>
+                      <button onClick="{{ adEditDomain }}" style="height:26px;padding:0 10px;background:#263237;border:1px solid #3b4954;border-radius:4px;color:#fdc700;cursor:pointer;font-family:'Press Start 2P',monospace;font-size:8px;" style-hover="border-color:#fdc700;">{{ adDomainBtn }}</button>
+                    </span>
+                  </div>
+                  <sc-if value="{{ adDomainPending }}" hint-placeholder-val="{{ false }}">
+                    <div style="border:1px solid #263237;border-radius:4px;padding:8px 10px;background:#111518;display:flex;flex-direction:column;gap:5px;">
+                      <div style="font-size:10px;color:#fdc700;">◆ PROVE OWNERSHIP — add this DNS record, verification is automatic:</div>
+                      <div style="display:flex;align-items:center;gap:8px;">
+                        <code style="flex:1;font-family:'Reddit Mono',monospace;font-size:10.5px;color:#dbe1e6;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">TXT {{ adDomainHost }} → {{ adDomainToken }}</code>
+                        <button onClick="{{ adCopyToken }}" style="height:24px;padding:0 8px;background:#263237;border:1px solid #3b4954;border-radius:4px;color:#9fafbc;cursor:pointer;font-size:10px;" style-hover="color:#00ff6f;border-color:#00ff6f;">COPY</button>
+                      </div>
+                    </div>
+                  </sc-if>
+                </sc-if>
+              </div>
+            </sc-if>
             <div style="background:#151b1e;border:2px solid #3b4954;border-radius:4px;padding:16px;display:flex;flex-direction:column;gap:8px;">
               <div style="font:500 10px/14px 'Inter',sans-serif;letter-spacing:0.5px;color:#758c9f;">PODS</div>
               <sc-for list="{{ adPods }}" as="p" hint-placeholder-count="2">
@@ -2139,6 +2178,26 @@ class Component extends DCLogic {
           adTelemetryState: (a.telemetry && a.telemetry.closed) ? '◼ ' + a.telemetry.closed.toUpperCase() : '● LIVE',
           adTelemetryFg: (a.telemetry && a.telemetry.closed) ? '#fdc700' : '#00ff6f',
           adReconnectLogs: () => this.__reopenLogs && this.__reopenLogs(a.id),
+          // cargo hold + vanity callsign (real platform apps only, capability-gated)
+          adHasCargoPanel: (function (self) {
+            const caps = (s.platform && s.platform.caps) || [];
+            const real = a.id && a.id.indexOf('app:') === 0;
+            return real && (caps.indexOf('volumes') !== -1 || caps.indexOf('custom-domains') !== -1);
+          })(this),
+          adShowCargo: ((s.platform && s.platform.caps) || []).indexOf('volumes') !== -1,
+          adShowDomain: ((s.platform && s.platform.caps) || []).indexOf('custom-domains') !== -1,
+          adHasVolume: !!a.volumeSize,
+          adNoVolume: !a.volumeSize,
+          adVolume: a.volumeSize || '',
+          adCargoOptions: ['1Gi', '5Gi', '10Gi'].map(sz => ({ label: sz, attach: () => this.__attachVolume && this.__attachVolume(a.id, sz) })),
+          adDomainLabel: a.customDomain ? a.customDomain + (a.domainVerified ? ' ✓ VERIFIED' : ' · UNVERIFIED') : 'none',
+          adDomainFg: a.customDomain ? (a.domainVerified ? '#00ff6f' : '#fdc700') : '#758c9f',
+          adDomainBtn: a.customDomain ? 'CHANGE' : '+ REGISTER',
+          adEditDomain: () => this.__setDomain && this.__setDomain(a.id),
+          adDomainPending: !!(a.customDomain && !a.domainVerified && a.domainToken),
+          adDomainHost: '_konduit-challenge.' + (a.customDomain || ''),
+          adDomainToken: 'konduit-verify=' + (a.domainToken || ''),
+          adCopyToken: () => { try { navigator.clipboard.writeText('konduit-verify=' + (a.domainToken || '')); } catch (_) {} },
           pods: podRows,
           log: (a.history || []).map(h => ({ sha: h.sha, msg: h.msg, result: h.result, fg: '#00ff6f', dur: h.dur, ago: this.timeAgo(h.at) })),
           logEmpty: !(a.history || []).length
@@ -2394,6 +2453,9 @@ class Component extends DCLogic {
       adChecks: ad ? ad.checks : '0', adUptime: ad ? ad.uptime : '—', adDeploys: ad ? ad.deploys : '0',
       adDeploy: ad ? ad.deploy : [], adRes: ad ? ad.res : [],
       adPods: ad ? ad.pods : [], adLog: ad ? ad.log : [], adLogEmpty: !!(ad && ad.logEmpty),
+      // expose every ad-prefixed key (fuel line, flight log, telemetry, cargo,
+      // callsign) — only 'ad*' names so nothing collides with other props
+      ...Object.fromEntries(Object.entries(ad || {}).filter(([k]) => k.indexOf('ad') === 0)),
 
       // toast + floaters
       toastOn: !!s.toast,
