@@ -55,6 +55,16 @@
     });
   };
 
+  // Entitled sizes as known from discover(); appToGame runs before and after
+  // discovery resolves, so keep a fallback table of the built-in catalog.
+  let entitledSizes = [];
+  const SIZE_FALLBACK = { xs: [0.5, 1], s: [1, 1], m: [2, 2], l: [4, 4] };
+  const sizeNumbers = (key) => {
+    const s = entitledSizes.find((x) => x.key === key);
+    if (s) return [qty(s.cpu) || 1, (qty(s.memory) || 2 ** 30) / 2 ** 30];
+    return SIZE_FALLBACK[key] || [1, 1];
+  };
+
   // platform refusal -> in-fiction copy the player can act on
   const friendlyError = (e) => {
     const msg = String((e && e.message) || "");
@@ -99,8 +109,8 @@
       name: a.app_name || a.name,
       repo: a.repo_name || "",
       branch: a.branch || "main",
-      cpu: 1,
-      mem: 1,
+      cpu: sizeNumbers(a.size)[0],
+      mem: sizeNumbers(a.size)[1],
       replicas: a.replicas || 1,
       planetId: planet ? planet.id : "",
       status: phaseToStatus(st.phase),
@@ -161,20 +171,51 @@
       kontract
         .quota(org)
         .then((q) => {
+          // Numeric remaining feeds the planets: org allowance is the ONE
+          // pool, so every planet's ceiling is its own usage + this figure.
+          let remainCpu = 999;
+          let remainMem = 999;
+          if (q && q.capped) {
+            remainCpu = Math.max(0, (qty(q.cpu && q.cpu.limit) || 0) - (qty(q.cpu && q.cpu.used) || 0));
+            remainMem = Math.max(0, ((qty(q.memory && q.memory.limit) || 0) - (qty(q.memory && q.memory.used) || 0)) / 2 ** 30);
+          }
           const platform = Object.assign({}, game.state.platform, {
             quotaBars: quotaBars(q),
             quotaPlan: ((q && q.plan) || "").toUpperCase(),
+            quotaRemainCpu: remainCpu,
+            quotaRemainMem: remainMem,
           });
           game.setState({ platform });
+          resizePlanets();
         })
         .catch(() => {});
     };
+    // Zones have no caps of their own: each planet's ceiling is what it uses
+    // plus the org pool's remainder, so consumption anywhere shrinks headroom
+    // everywhere — exactly the platform's admission math.
+    const resizePlanets = () => {
+      const plat = game.state.platform || {};
+      if (plat.quotaRemainCpu == null) return;
+      let changed = false;
+      const planets = game.state.planets.map((p) => {
+        if (!(p.id && p.id.indexOf("zone:") === 0)) return p;
+        const u = game.usage(p.id);
+        const cpu = Math.max(1, Math.ceil(u.cpu + plat.quotaRemainCpu));
+        const mem = Math.max(1, Math.ceil(u.mem + plat.quotaRemainMem));
+        if (p.cpu === cpu && p.mem === mem) return p;
+        changed = true;
+        return Object.assign({}, p, { cpu, mem });
+      });
+      if (changed) game.setState({ planets });
+    };
+
     game.__refreshQuota = refreshQuota;
 
     kontract
       .discover(org)
       .then((disc) => {
         const caps = (disc && disc.capabilities) || [];
+        entitledSizes = (disc && disc.app_sizes) || [];
         game.setState({
           platform: Object.assign({}, game.state.platform, {
             caps,
@@ -232,6 +273,7 @@
         }
       }
       game.setState(patch);
+      resizePlanets();
     });
 
     // ── real repo picker: the org's registered repositories ────────
@@ -653,8 +695,15 @@
               (p.id === launchId && !list.some((r) => "app:" + r.name === p.id)),
           );
           game.setState({ apps: next.concat(keep) });
+          resizePlanets();
+          scheduleQuota();
         })
         .catch(() => {});
+    };
+    let quotaT = null;
+    const scheduleQuota = () => {
+      clearTimeout(quotaT);
+      quotaT = setTimeout(refreshQuota, 800);
     };
     let pollTimer = null;
     const startPolling = () => {
