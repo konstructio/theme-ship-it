@@ -36,7 +36,8 @@
     String(raw == null ? "" : raw)
       .replace(/Gi$/, " GB")
       .replace(/Mi$/, " MB")
-      .replace(/Ti$/, " TB");
+      .replace(/Ti$/, " TB")
+      .replace(/^([0-9.]+)m$/, (_, n) => String(Math.round((parseFloat(n) / 1000) * 10) / 10));
 
   // org quota -> HUD meter rows the game can render verbatim
   const quotaBars = (q) => {
@@ -175,15 +176,27 @@
           // pool, so every planet's ceiling is its own usage + this figure.
           let remainCpu = 999;
           let remainMem = 999;
+          let limitCpu = null;
+          let limitMem = null;
+          let usedCpu = 0;
+          let usedMem = 0;
           if (q && q.capped) {
-            remainCpu = Math.max(0, (qty(q.cpu && q.cpu.limit) || 0) - (qty(q.cpu && q.cpu.used) || 0));
-            remainMem = Math.max(0, ((qty(q.memory && q.memory.limit) || 0) - (qty(q.memory && q.memory.used) || 0)) / 2 ** 30);
+            limitCpu = qty(q.cpu && q.cpu.limit) || 0;
+            limitMem = ((qty(q.memory && q.memory.limit) || 0)) / 2 ** 30;
+            usedCpu = qty(q.cpu && q.cpu.used) || 0;
+            usedMem = ((qty(q.memory && q.memory.used) || 0)) / 2 ** 30;
+            remainCpu = Math.max(0, limitCpu - usedCpu);
+            remainMem = Math.max(0, limitMem - usedMem);
           }
           const platform = Object.assign({}, game.state.platform, {
             quotaBars: quotaBars(q),
             quotaPlan: ((q && q.plan) || "").toUpperCase(),
             quotaRemainCpu: remainCpu,
             quotaRemainMem: remainMem,
+            quotaLimitCpu: limitCpu,
+            quotaLimitMem: limitMem,
+            quotaUsedCpu: usedCpu,
+            quotaUsedMem: usedMem,
           });
           game.setState({ platform });
           resizePlanets();
@@ -197,14 +210,29 @@
       const plat = game.state.platform || {};
       if (plat.quotaRemainCpu == null) return;
       let changed = false;
+      const r1 = (v) => Math.round(v * 10) / 10;
       const planets = game.state.planets.map((p) => {
         if (!(p.id && p.id.indexOf("zone:") === 0)) return p;
         const u = game.usage(p.id);
+        // fit math: the real ceiling THIS planet could grow to right now
         const cpu = Math.max(1, Math.ceil(u.cpu + plat.quotaRemainCpu));
         const mem = Math.max(1, Math.ceil(u.mem + plat.quotaRemainMem));
-        if (p.cpu === cpu && p.mem === mem) return p;
+        // card display: one shared org denominator, split into
+        // [used elsewhere][used here][free] so every planet agrees
+        const orgCpu = plat.quotaLimitCpu != null ? r1(plat.quotaLimitCpu) : null;
+        const orgMem = plat.quotaLimitMem != null ? r1(plat.quotaLimitMem) : null;
+        const sharedCpu = orgCpu != null ? r1(Math.max(0, plat.quotaUsedCpu - u.cpu)) : null;
+        const sharedMem = orgMem != null ? r1(Math.max(0, plat.quotaUsedMem - u.mem)) : null;
+        const freeCpu = orgCpu != null ? r1(plat.quotaRemainCpu) : null;
+        const freeMem = orgMem != null ? r1(plat.quotaRemainMem) : null;
+        if (
+          p.cpu === cpu && p.mem === mem && p.orgCpu === orgCpu && p.orgMem === orgMem &&
+          p.sharedCpu === sharedCpu && p.sharedMem === sharedMem && p.freeCpu === freeCpu && p.freeMem === freeMem
+        ) {
+          return p;
+        }
         changed = true;
-        return Object.assign({}, p, { cpu, mem });
+        return Object.assign({}, p, { cpu, mem, orgCpu, orgMem, sharedCpu, sharedMem, freeCpu, freeMem });
       });
       if (changed) game.setState({ planets });
     };

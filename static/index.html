@@ -355,8 +355,8 @@ input:focus,select:focus{outline:none;border-color:#00ff6f !important;}
                         <button onClick="{{ p.visit }}" style="height:26px;padding:0 10px;background:transparent;border:1px solid #3b4954;border-radius:4px;color:#9fafbc;font-size:10.5px;font-weight:600;cursor:pointer;" style-hover="color:#00ff6f;border-color:#00ff6f;">VISIT ▶</button>
                       </div>
                       <div style="display:flex;flex-direction:column;gap:5px;">
-                        <div style="display:flex;align-items:center;gap:6px;font-size:10px;color:#758c9f;"><span style="width:28px;">CPU</span><div style="flex:1;height:7px;background:#263237;border-radius:2px;overflow:hidden;"><div style="height:100%;background:{{ p.cpuFg }};width:{{ p.cpuPct }};transition:width 400ms;"></div></div><span style="width:52px;text-align:right;color:#9fafbc;">{{ p.cpuText }}</span></div>
-                        <div style="display:flex;align-items:center;gap:6px;font-size:10px;color:#758c9f;"><span style="width:28px;">MEM</span><div style="flex:1;height:7px;background:#263237;border-radius:2px;overflow:hidden;"><div style="height:100%;background:{{ p.memFg }};width:{{ p.memPct }};transition:width 400ms;"></div></div><span style="width:52px;text-align:right;color:#9fafbc;">{{ p.memText }}</span></div>
+                        <div style="display:flex;align-items:center;gap:6px;font-size:10px;color:#758c9f;"><span style="width:28px;">CPU</span><div style="flex:1;height:7px;background:#263237;border-radius:2px;overflow:hidden;display:flex;"><div style="height:100%;background:#4b5d6c;width:{{ p.cpuSharedPct }};transition:width 400ms;"></div><div style="height:100%;background:{{ p.cpuFg }};width:{{ p.cpuPct }};transition:width 400ms;"></div></div><span style="width:52px;text-align:right;color:#9fafbc;">{{ p.cpuText }}</span></div>
+                        <div style="display:flex;align-items:center;gap:6px;font-size:10px;color:#758c9f;"><span style="width:28px;">MEM</span><div style="flex:1;height:7px;background:#263237;border-radius:2px;overflow:hidden;display:flex;"><div style="height:100%;background:#4b5d6c;width:{{ p.memSharedPct }};transition:width 400ms;"></div><div style="height:100%;background:{{ p.memFg }};width:{{ p.memPct }};transition:width 400ms;"></div></div><span style="width:52px;text-align:right;color:#9fafbc;">{{ p.memText }}</span></div>
                       </div>
                       <div style="font-size:11px;color:#758c9f;">{{ p.appsLabel }}</div>
                     </div>
@@ -1990,22 +1990,34 @@ class Component extends DCLogic {
     // planets
     const planetCards = s.planets.map(p => {
       const u = this.usage(p.id);
-      const cp = Math.min(100, Math.round(u.cpu / p.cpu * 100)), mp = Math.min(100, Math.round(u.mem / p.mem * 100));
+      // Org-pool planets share ONE denominator (the org allowance) with a
+      // dimmed segment for capacity used on OTHER planets — every card then
+      // agrees with the org meter on what remains. Fiction planets keep the
+      // classic own-capacity bar.
+      const pooled = p.orgCpu != null;
+      const capCpu = pooled ? p.orgCpu : p.cpu;
+      const capMem = pooled ? p.orgMem : p.mem;
+      const cp = Math.min(100, Math.round(u.cpu / capCpu * 100)), mp = Math.min(100, Math.round(u.mem / capMem * 100));
+      const cpuShared = pooled ? Math.min(100 - cp, Math.round(p.sharedCpu / capCpu * 100)) : 0;
+      const memShared = pooled ? Math.min(100 - mp, Math.round(p.sharedMem / capMem * 100)) : 0;
+      const cpTot = cp + cpuShared, mpTot = mp + memShared;
       const appsOn = s.apps.filter(a => a.planetId === p.id);
       const podsLive = appsOn.filter(a => a.launched).reduce((t, a) => t + a.replicas, 0);
       const pf = sp ? this.podsFor(podsLive, 80, 2) : { ring: false, items: [], ringW: '0px', ringH: '0px', ringLeft: '0px', ringTop: '0px' };
       const pods = pf.items;
+      const baseLabel = appsOn.length ? appsOn.length + ' app' + (appsOn.length > 1 ? 's' : '') + ' · ' + podsLive + ' pods humming' : 'Uninhabited — ship something!';
       return {
         ringOn: pf.ring && podsLive > 0, ringW: pf.ringW, ringH: pf.ringH, ringLeft: pf.ringLeft, ringTop: pf.ringTop,
         visit: () => this.visitPlanet(p.id),
-        name: p.name, cls: p.cls + ' · ' + p.cpu + ' CPU · ' + p.mem + ' GB',
+        name: p.name, cls: p.cls + ' · ' + capCpu + ' CPU · ' + capMem + ' GB' + (pooled ? ' org pool' : ''),
         bs: sp ? S.planetShadow(p.look, 4) : '',
         pods,
+        cpuSharedPct: cpuShared + '%', memSharedPct: memShared + '%',
         cpuPct: cp + '%', memPct: mp + '%',
-        cpuFg: cp > 85 ? '#fb2c37' : (cp > 60 ? '#fdc700' : '#00ff6f'),
-        memFg: mp > 85 ? '#fb2c37' : (mp > 60 ? '#fdc700' : '#00ff6f'),
-        cpuText: u.cpu + '/' + p.cpu, memText: u.mem + '/' + p.mem + ' GB',
-        appsLabel: appsOn.length ? appsOn.length + ' app' + (appsOn.length > 1 ? 's' : '') + ' · ' + podsLive + ' pods humming' : 'Uninhabited — ship something!'
+        cpuFg: cpTot > 85 ? '#fb2c37' : (cpTot > 60 ? '#fdc700' : '#00ff6f'),
+        memFg: mpTot > 85 ? '#fb2c37' : (mpTot > 60 ? '#fdc700' : '#00ff6f'),
+        cpuText: u.cpu + '/' + capCpu, memText: u.mem + '/' + capMem + ' GB',
+        appsLabel: pooled ? baseLabel + ' · ' + p.freeCpu + ' CPU · ' + p.freeMem + ' GB free in the org pool' : baseLabel
       };
     });
 
