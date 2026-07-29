@@ -238,6 +238,34 @@
       if (changed) game.setState({ planets });
     };
 
+    const refreshZones = () => {
+      kontract
+        .zones(org)
+        .then((zones) => {
+          const list = Array.isArray(zones) ? zones : [];
+          const prev = game.state.planets;
+          const prevById = new Map(prev.map((p) => [p.id, p]));
+          const next = list.map((z) => {
+            const ga = prevById.get("zone:" + z.name);
+            const fresh = zoneToPlanet(z);
+            // keep the look + accumulated fiction of a matched planet
+            return ga ? Object.assign({}, ga, { name: fresh.name, cls: fresh.cls }) : fresh;
+          });
+          // local claims (not yet zones) get 3 minutes to materialize; after
+          // that they were either replaced by their real zone or never landed
+          const localKeep = prev.filter(
+            (p) => !(p.id && p.id.indexOf("zone:") === 0) && Date.now() - (p.createdAt || 0) < 180000,
+          );
+          const merged = next.concat(localKeep);
+          const same =
+            merged.length === prev.length && merged.every((p, i) => prev[i] && prev[i].id === p.id);
+          if (!same) game.setState({ planets: merged });
+          resizePlanets();
+        })
+        .catch(() => {});
+    };
+    game.__refreshZones = refreshZones;
+
     game.__refreshQuota = refreshQuota;
 
     kontract
@@ -249,6 +277,7 @@
           platform: Object.assign({}, game.state.platform, {
             caps,
             sizes: (disc && disc.app_sizes) || [],
+            rates: (disc && disc.rates) || {},
             quotaBars: [],
             quotaPlan: "",
           }),
@@ -270,8 +299,10 @@
       const zoneList = Array.isArray(zones) ? zones : [];
       const appList = Array.isArray(apps) ? apps : [];
       const planets = zoneList.map(zoneToPlanet);
+      // server zones are the only durable planets; local fiction survives just
+      // long enough (3 min) for a fresh claim's real zone to materialize
       const keepLocal = game.state.planets.filter(
-        (p) => !planets.some((sp) => sp.name === p.name),
+        (p) => !(p.id && p.id.indexOf("zone:") === 0) && Date.now() - (p.createdAt || 0) < 180000,
       );
       const allPlanets = planets.concat(keepLocal);
       const gameApps = appList.map((a) => appToGame(a, allPlanets));
@@ -367,6 +398,7 @@
           name,
           display_name: d.name,
         })
+        .then(() => setTimeout(refreshZones, 1500))
         .catch((e) => {
           if (!(e && e.status === 409)) {
             game.showToast &&
@@ -732,8 +764,12 @@
     let quotaT = null;
     const scheduleQuota = () => {
       clearTimeout(quotaT);
-      quotaT = setTimeout(refreshQuota, 800);
+      quotaT = setTimeout(() => {
+        refreshQuota();
+        refreshZones();
+      }, 800);
     };
+    setInterval(refreshZones, 60000);
     let pollTimer = null;
     const startPolling = () => {
       if (!pollTimer) pollTimer = setInterval(refreshApps, 15000);

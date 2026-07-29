@@ -450,7 +450,7 @@ input:focus,select:focus{outline:none;border-color:#00ff6f !important;}
               <button onClick="{{ closeShop }}" style="width:38px;height:38px;background:#263237;border:1px solid #3b4954;border-radius:4px;color:#9fafbc;cursor:pointer;font-size:15px;" style-hover="color:#00ff6f;border-color:#00ff6f;">←</button>
               <div>
                 <div style="font-family:'Press Start 2P',monospace;font-size:15px;color:#fdc700;text-shadow:3px 3px 0 rgba(0,0,0,0.6);">THE SHIP SHOP</div>
-              <div style="margin-top:10px;padding:10px 14px;background:rgba(0,255,111,0.08);border:2px dashed #00ff6f;border-radius:4px;font-family:'Press Start 2P',monospace;font-size:8px;line-height:1.9;color:#00ff6f;animation:su-pulse 2.2s ease-in-out infinite;">✨ LIMITED TIME · GRAVITY-FREE SALE ✨<br /><span style="color:#9fafbc;">NO COSTS THROUGH JULY 30 — INTRODUCTION SALE, WHILE RESOURCES LAST</span></div>
+              <div style="margin-top:10px;padding:10px 14px;background:rgba(0,255,111,0.08);border:2px dashed #00ff6f;border-radius:4px;font-family:'Press Start 2P',monospace;font-size:8px;line-height:1.9;color:#00ff6f;animation:su-pulse 2.2s ease-in-out infinite;">PLANETS ARE FREE · RESOURCES ARE THE PRODUCT<br /><span style="color:#9fafbc;">YOUR ORG POOL SETS THE CEILING — UPGRADE THE TIER, THEN STACK RESOURCE PACKS</span></div>
                 <div style="font-size:12px;color:#9fafbc;margin-top:5px;">Rockets, planets &amp; app packs. A bot named ARGO runs the till.</div>
               </div>
               <div style="flex:1;"></div>
@@ -1101,8 +1101,8 @@ class Component extends DCLogic {
     this.ORG = 'GG ORGANIZATION'; this.ORG_TAG = 'GG';
     this.ROCKET_TIERS = [
       { id: 'rust', name: 'RUSTBUCKET', price: 0, note: 'Trusty starter ship. Smells like cache.', colors: {} },
-      { id: 'swift', name: 'SWIFT MK-II', price: 0, note: '20% faster builds · ' + this.ORG_TAG + ' livery on the hull', colors: { g: '#00bcff', G: '#0069a8', b: '#a2f4fd' } },
-      { id: 'flag', name: 'GOLD FLAGSHIP', price: 0, note: '+25 XP sponsor bonus per launch · ' + this.ORG_TAG + ' livery', colors: { g: '#fdc700', G: '#e17100', b: '#fef9c2', m: '#ffd230' } }
+      { id: 'swift', name: 'CIVO-33', price: 0, note: '20% faster builds · Civo green over black hull', colors: { g: '#00ff6f', G: '#0b3d26', b: '#a7ffd0', m: '#05df72' } },
+      { id: 'flag', name: 'LADY K-RAY', price: 0, note: '+25 XP sponsor bonus per launch · kubefirst manta livery', colors: { g: '#8b7bf0', G: '#3d3777', b: '#d5c9f7', m: '#a794f5' } }
     ];
     this.POD_SLOTS = [[52, 44], [132, 58], [84, 118], [162, 124], [44, 158], [120, 172]];
     this.THRESHOLDS = [100, 300, 600, 1000, 1500, 2200, 3000, 4200, 6000];
@@ -1352,7 +1352,7 @@ class Component extends DCLogic {
     const planets = [...this.state.planets, planet];
     this.beep('go');
     this.setState({ planets, billItems, screen: 'hq' });
-    this.showToast('PLANET CLAIMED!', 'Welcome to ' + d.name + ' — ' + d.cpu + ' CPU · ' + d.mem + ' GB of pristine wilderness.', '#00ff6f');
+    this.showToast('PLANET CLAIMED!', 'Welcome to ' + d.name + (d.cpu ? ' — ' + d.cpu + ' CPU · ' + d.mem + ' GB of pristine wilderness.' : ' — it draws from your org\'s shared resource pool.'), '#00ff6f');
     if (this.state.planetMode === 'shop') {
       this.completeQuest('q6');
       if (planets.length >= 2) this.completeQuest('q7');
@@ -1644,7 +1644,7 @@ class Component extends DCLogic {
   buyHours = () => {
     if (this.state.level < 5) { this.beep('deny'); return; }
     this.beep('buy');
-    this.setState({ billItems: [...this.state.billItems, { label: 'KONSTRUCT CREW · 5 HOURS', amt: 0, once: true }] });
+    this.setState({ billItems: [...this.state.billItems, { label: 'KONSTRUCT CREW · 5 HOURS', amt: 1000, once: true }] });
     this.showToast('CREW BOOKED!', 'Opening the Konstruct contact page in a new tab — real humans will take it from there.', '#fdc700');
     this.completeQuest('q6');
     this.later(() => this.persist(), 100);
@@ -2311,9 +2311,9 @@ class Component extends DCLogic {
       prevLook: () => this.cycleLook(-1), nextLook: () => this.cycleLook(1),
       lookName: sp ? S.PLANET_LOOKS[s.planetDraft.look].name : '',
       planetSuggestions: this.PLANET_SUGGESTIONS.map(n => ({ label: n, pick: () => { this.beep('blip'); this.setState({ planetDraft: Object.assign({}, s.planetDraft, { name: n }) }); } })),
-      planetClass: s.planetDraft.cls + ' PLANET',
-      planetCpuLabel: s.planetDraft.cpu + ' CPU', planetMemLabel: s.planetDraft.mem + ' GB',
-      planetCostLabel: s.planetDraft.cost ? '$' + s.planetDraft.cost + '/MO' : 'FREE W/ PACK',
+      planetClass: s.planetDraft.cpu ? s.planetDraft.cls + ' PLANET' : 'NEW ENVIRONMENT',
+      planetCpuLabel: s.planetDraft.cpu ? s.planetDraft.cpu + ' CPU' : 'SHARED', planetMemLabel: s.planetDraft.mem ? s.planetDraft.mem + ' GB' : 'ORG POOL',
+      planetCostLabel: s.planetDraft.cost ? '$' + s.planetDraft.cost + '/MO' : 'FREE',
       claimPlanet: this.claimPlanet, claimOp: s.planetDraft.name.trim() ? 1 : 0.45,
 
       // hq — hero panel
@@ -2386,17 +2386,25 @@ class Component extends DCLogic {
 
       // shop
       merchantLayers: sp ? S.heroLayers({ species: 1, helmet: 0, suit: 3, cape: 0, gadget: 3 }, 4) : [],
-      shopItems: sp ? [
-        { name: 'APP 10-PACK', desc: '+10 app tokens to ship more weird ideas.', price: '$0', iconBs: S.shadow(S.CRATE.rows, S.CRATE.colors, 3, 0, 0), buy: this.buyPack },
-        { name: 'SMALL PLANET', desc: '10 CPU · 10 GB. Cozy starter world.', price: '$0', iconBs: S.planetShadow(1, 2.4), buy: () => this.buyPlanet('SMALL', 10, 10, 0) },
-        { name: 'MEDIUM PLANET', desc: '20 CPU · 20 GB. Room for a fleet.', price: '$0', iconBs: S.planetShadow(4, 2.9), buy: () => this.buyPlanet('MEDIUM', 20, 20, 0) },
-        { name: 'PLANET UPGRADE', desc: '+10 CPU · +10 GB on your first world.', price: '$0', iconBs: S.shadow(S.POD.rows, S.POD.colors, 5, 0, 0), buy: this.buyUpgrade },
-        { name: 'SWIFT MK-II', desc: '20% faster builds. ' + this.ORG_TAG + ' livery on the hull.', price: '$0', iconBs: S.shadow(S.ROCKET.rows, this.rocketColors('swift'), 2.4, 0, 0), buy: () => this.buyRocket('swift') },
-        { name: 'GOLD FLAGSHIP', desc: '+25 XP sponsor bonus per launch. Shiny.', price: '$0', iconBs: S.shadow(S.ROCKET.rows, this.rocketColors('flag'), 2.4, 0, 0), buy: () => this.buyRocket('flag') },
-        { name: 'MEET JOHN DIETZ', desc: 'One meeting with the Konstruct cofounder. Best deal in the galaxy.', price: '$0', iconBs: '', img: 'uploads/johndietz-pixel.png', buy: this.bookDietz, href: 'https://ro.am/johndietz/feedback', cta: 'BOOK' },
-        { name: 'COFFEE WITH DONNA', desc: 'Grab a coffee and talk platform with Donna. Bring your own mug.', price: '$0', iconBs: '', img: 'uploads/coffee-pixel.png', buy: this.bookDonna, href: 'https://ro.am/johndietz/feedback', cta: 'BOOK' },
-        { name: 'KONSTRUCT CREW · 5 HRS', desc: 'Five hours with the Konstruct team. Real humans, real expertise.', price: '$0', iconBs: S.shadow(S.COIN.rows, S.COIN.colors, 5, 0, 0), buy: this.buyHours, href: 'https://www.civo.com/konstruct#contact', locked: s.level < 5, lockNote: 'LV 5 REQUIRED' }
-      ].map(i => Object.assign({ lockNote: '' }, i, {
+      shopItems: sp ? (function (self) {
+        const plat = s.platform || {};
+        const paid = !!(plat.quotaPlan && plat.quotaPlan !== 'FREE');
+        const rates = plat.rates || {};
+        const packMo = Math.round(((rates.vcpu_hour_usd || 0.01) * 10 + (rates.gb_hour_usd || 0.005) * 10) * 730);
+        return [
+          { name: 'APP 10-PACK', desc: '+10 app tokens to ship more weird ideas.', price: '$0', iconBs: S.shadow(S.CRATE.rows, S.CRATE.colors, 3, 0, 0), buy: self.buyPack },
+          { name: 'NEW PLANET', desc: 'A fresh environment. Draws from your org\'s shared resource pool — no tiers, no per-planet caps.', price: '$0', iconBs: S.planetShadow(1, 2.4), buy: () => self.buyPlanet('', 0, 0, 0) },
+          paid
+            ? { name: 'ORG TIER · ' + plat.quotaPlan, desc: 'Paid tier active — resource packs unlocked below.', price: 'ACTIVE ✓', iconBs: S.shadow(S.COIN.rows, S.COIN.colors, 5, 0, 0), buy: () => self.beep('coin'), cta: 'OWNED' }
+            : { name: 'ORG UPGRADE', desc: 'Move to the paid tier to raise your organization\'s planetary resource ceiling.', price: 'PAID TIER', iconBs: S.shadow(S.COIN.rows, S.COIN.colors, 5, 0, 0), buy: () => self.showToast('TALK TO THE CREW', 'Tier changes are a platform decision — opening the contact page.', '#fdc700'), href: 'https://www.civo.com/konstruct#contact', cta: 'UPGRADE' },
+          { name: 'RESOURCE PACK', desc: '+10 CPU · +10 GB added to your org\'s shared pool.', price: '$' + packMo + '/MO', iconBs: S.shadow(S.POD.rows, S.POD.colors, 5, 0, 0), buy: () => self.showToast('CREW PROVISIONED', 'Resource packs are provisioned by the platform crew — opening the contact page.', '#fdc700'), href: 'https://www.civo.com/konstruct#contact', cta: 'BUY', locked: !paid, lockNote: 'PAID TIER REQUIRED' },
+          { name: 'CIVO-33', desc: '20% faster builds. Civo green over a black hull.', price: '$0', iconBs: S.shadow(S.ROCKET.rows, self.rocketColors('swift'), 2.4, 0, 0), buy: () => self.buyRocket('swift') },
+          { name: 'LADY K-RAY', desc: '+25 XP sponsor bonus per launch. The kubefirst manta rides again.', price: '$0', iconBs: '', img: 'uploads/kray.png', buy: () => self.buyRocket('flag') },
+          { name: 'MEET JOHN DIETZ', desc: 'One meeting with the Konstruct cofounder. Best deal in the galaxy.', price: '$0', iconBs: '', img: 'uploads/johndietz-pixel.png', buy: self.bookDietz, href: 'https://ro.am/johndietz/book-me', cta: 'BOOK' },
+          { name: 'COFFEE WITH DONNA', desc: 'Grab a coffee and talk platform with Donna. Bring your own mug.', price: '$0', iconBs: '', img: 'uploads/coffee-pixel.png', buy: self.bookDonna, href: 'https://ro.am/johndietz/book-me', cta: 'BOOK' },
+          { name: 'KONSTRUCT CREW · 5 HRS', desc: 'Five hours with the Konstruct team. Real humans, real expertise.', price: '$1,000', iconBs: S.shadow(S.COIN.rows, S.COIN.colors, 5, 0, 0), buy: self.buyHours, href: 'https://www.civo.com/konstruct#contact', locked: s.level < 5, lockNote: 'LV 5 REQUIRED' }
+        ];
+      })(this).map(i => Object.assign({ lockNote: '' }, i, {
         cta: i.cta || 'BUY',
         href: i.href || '#',
         isLink: !!i.href && !i.locked,
