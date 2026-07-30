@@ -610,6 +610,25 @@ input:focus,select:focus{outline:none;border-color:#00ff6f !important;}
                 </div>
               </div>
             </div>
+            <sc-if value="{{ statsOn }}" hint-placeholder-val="{{ true }}">
+              <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(280px,1fr));gap:12px;">
+                <sc-for list="{{ uPlanets }}" as="p" hint-placeholder-count="2">
+                  <div style="background:#151b1e;border:2px solid #3b4954;border-radius:4px;padding:14px 16px;display:flex;flex-direction:column;gap:8px;">
+                    <div style="font-family:'Press Start 2P',monospace;font-size:9px;color:#00ff6f;">{{ p.name }} · MISSION CONTROL</div>
+                    <sc-for list="{{ p.mcRows }}" as="r" hint-placeholder-count="4">
+                      <div style="display:flex;justify-content:space-between;gap:12px;font-size:11.5px;border-bottom:1px solid #1d2629;padding-bottom:5px;"><span style="color:#758c9f;flex-shrink:0;">{{ r.k }}</span><span style="font-family:'Reddit Mono',monospace;font-size:11px;color:{{ r.fg }};text-align:right;">{{ r.v }}</span></div>
+                    </sc-for>
+                    <sc-if value="{{ p.mcHasSpark }}" hint-placeholder-val="{{ false }}">
+                      <div style="display:flex;gap:14px;align-items:center;margin-top:2px;">
+                        <span style="display:inline-flex;align-items:center;gap:5px;"><span style="color:#00ff6f;font-size:9px;font-family:'Press Start 2P',monospace;">CPU</span><svg width="150" height="26" viewBox="0 0 150 26" preserveAspectRatio="none" style="background:#0c1114;border:1px solid #263237;border-radius:3px;"><polyline points="{{ p.mcSparkCpu }}" fill="none" stroke="#00ff6f" stroke-width="1.4"></polyline></svg></span>
+                        <span style="display:inline-flex;align-items:center;gap:5px;"><span style="color:#00bcff;font-size:9px;font-family:'Press Start 2P',monospace;">MEM</span><svg width="150" height="26" viewBox="0 0 150 26" preserveAspectRatio="none" style="background:#0c1114;border:1px solid #263237;border-radius:3px;"><polyline points="{{ p.mcSparkMem }}" fill="none" stroke="#00bcff" stroke-width="1.4"></polyline></svg></span>
+                      </div>
+                    </sc-if>
+                    <sc-if value="{{ p.mcNoSpark }}" hint-placeholder-val="{{ false }}"><span></span></sc-if>
+                  </div>
+                </sc-for>
+              </div>
+            </sc-if>
             <div style="font-size:11px;color:#758c9f;">SHARE renders your universe as a PNG and opens the share sheet — copy, save, and post.</div>
           </div>
         </div>
@@ -633,7 +652,7 @@ input:focus,select:focus{outline:none;border-color:#00ff6f !important;}
               <button onClick="{{ copyShareText }}" style="height:40px;padding:0 14px;background:transparent;border:1px solid #3b4954;border-radius:4px;color:#dbe1e6;font-family:'Press Start 2P',monospace;font-size:8px;cursor:pointer;" style-hover="border-color:#4b5d6c;color:#f3f5f7;">COPY CAPTION</button>
               <a href="{{ shareHref }}" target="_blank" rel="noopener" style="display:inline-flex;align-items:center;height:40px;padding:0 14px;background:transparent;border:1px solid #fdc700;border-radius:4px;color:#fdc700;font-family:'Press Start 2P',monospace;font-size:8px;" style-hover="background:rgba(253,199,0,0.08);">LINKEDIN ↗</a>
             </div>
-            <div style="font-size:10.5px;color:#758c9f;">If LinkedIn won't open from inside Konstruct, open linkedin.com in your browser and paste — the image is already on your clipboard.</div>
+            <div style="font-size:10.5px;color:#758c9f;">LINKEDIN opens a draft with your card attached (it reads the hosted card page). Paste the caption from COPY CAPTION — LinkedIn drops pre-filled text on shared links.</div>
           </div>
         </div>
       </sc-if>
@@ -1872,7 +1891,14 @@ class Component extends DCLogic {
         this._shareUrl = URL.createObjectURL(blob);
         let copied = false;
         try { await navigator.clipboard.write([new ClipboardItem({ 'image/png': blob })]); copied = true; } catch (err) {}
-        this.setState({ share: { url: this._shareUrl, copied } });
+        // host the card so share targets can crawl its og:image — LinkedIn
+        // ignores anything that isn't reachable at a public URL
+        let cardUrl = '';
+        try {
+          const res = await fetch('/api/share-card', { method: 'POST', headers: { 'Content-Type': 'image/png' }, body: blob });
+          if (res.ok) cardUrl = ((await res.json()) || {}).url || '';
+        } catch (err) {}
+        this.setState({ share: { url: this._shareUrl, copied, cardUrl } });
       }, 'image/png');
     } catch (err) {
       this.showToast('CAPTURE FAILED', 'Try again in a second, hero.', '#fb2c37');
@@ -2382,10 +2408,32 @@ class Component extends DCLogic {
     }
     // ── universe ──
     const agg = this.aggStats();
+    // Pointwise sum of ragged series, aligned at the tail (freshest samples).
+    const sumTail = (arrs) => {
+      const L = Math.max(0, ...arrs.map(a => (a || []).length));
+      if (!L) return [];
+      const out = [];
+      for (let k = L; k > 0; k--) {
+        let v = 0, has = false;
+        for (const a of arrs) {
+          const x = a && a[a.length - k];
+          if (typeof x === 'number' && !Number.isNaN(x)) { v += x; has = true; }
+        }
+        out.push(has ? v : 0);
+      }
+      return out;
+    };
+    const lastNum = (a) => (a && a.length ? a[a.length - 1] : null);
     const uPlanets = (s.screen === 'universe' && sp) ? s.planets.map(p => {
-      const appsOn = s.apps.filter(a => a.planetId === p.id && a.launched);
+      const appsAll = s.apps.filter(a => a.planetId === p.id);
+      const appsOn = appsAll.filter(a => a.launched);
       const u = this.usage(p.id);
       const upf = this.podsFor(appsOn.reduce((t, a) => t + a.replicas, 0), 140, 2);
+      const cpuAgg = sumTail(appsOn.map(a => a.metricsCpu));
+      const memAgg = sumTail(appsOn.map(a => a.metricsMem));
+      const cpuNow = lastNum(cpuAgg), memNow = lastNum(memAgg);
+      const wiped = appsAll.filter(a => a.status === 'failed' || (a.launched && a.status === 'Failed')).length;
+      const busy = appsAll.filter(a => a.status === 'building' || a.status === 'ready' || a.status === 'watching').length;
       return {
         bs: S.planetShadow(p.look, 7), w: '140px', h: '133px',
         name: p.name, sub: u.cpu + '/' + p.cpu + ' CPU · ' + u.mem + '/' + p.mem + ' GB',
@@ -2395,9 +2443,21 @@ class Component extends DCLogic {
         boards: appsOn.slice(0, 2).map(a => ({
           url: a.url,
           stats: 'UPT 100% · ' + (a.checks || 0) + ' CHECKS · ' + (a.deploys || 0) + ' DEPLOYS · ' + a.replicas + ' PODS'
-        }))
+        })),
+        // mission control: per-planet observability board
+        mcRows: [
+          { k: 'FLEET', v: appsOn.length + ' riding · ' + busy + ' prepping · ' + wiped + ' wiped', fg: wiped ? '#fb2c37' : '#9fafbc' },
+          { k: 'DRAW', v: u.cpu + ' CPU · ' + u.mem + ' GB of the org pool', fg: '#9fafbc' },
+          { k: 'ENGINES', v: cpuNow != null ? (cpuNow >= 1 ? cpuNow.toFixed(2) : cpuNow.toFixed(3)) + ' cores · ' + (memNow != null ? Math.round(memNow / 1048576) + ' MB' : '—') + ' live' : 'no telemetry yet', fg: '#00bcff' },
+          { k: 'LAUNCHES', v: String(p.launches || 0) + ' from this soil', fg: '#fdc700' }
+        ],
+        mcHasSpark: cpuAgg.length > 1,
+        mcSparkCpu: this.sparkPath(cpuAgg, 150, 26),
+        mcSparkMem: this.sparkPath(memAgg, 150, 26)
       };
     }) : [];
+    const uCpuNow = (s.screen === 'universe') ? lastNum(sumTail(s.apps.filter(a => a.launched).map(a => a.metricsCpu))) : null;
+    const uMemNow = (s.screen === 'universe') ? lastNum(sumTail(s.apps.filter(a => a.launched).map(a => a.metricsMem))) : null;
     const rkColors = sp ? this.rocketColors(s.activeRocket) : null;
 
     return {
@@ -2620,10 +2680,14 @@ class Component extends DCLogic {
         { k: 'LAUNCHES', v: String(agg.launches), fg: '#f3f5f7' },
         { k: 'HEALTH CHECKS', v: String(agg.checks), fg: '#00bcff' },
         { k: 'UPTIME', v: '100.00%', fg: '#00ff6f' },
+        ...(uCpuNow != null ? [{ k: 'ENGINES NOW', v: (uCpuNow >= 1 ? uCpuNow.toFixed(2) : uCpuNow.toFixed(3)) + ' CORES · ' + Math.round((uMemNow || 0) / 1048576) + ' MB', fg: '#00bcff' }] : []),
+        ...((s.platform && s.platform.quotaRemainCpu != null) ? [{ k: 'FUEL LEFT', v: s.platform.quotaRemainCpu + ' CPU · ' + s.platform.quotaRemainMem + ' GB', fg: '#fdc700' }] : []),
         { k: 'HERO', v: 'LV ' + s.level, fg: '#fdc700' }
       ],
       uRocketBs: sp ? S.shadow(S.ROCKET.rows, rkColors, 2, 0, 0) : '',
-      shareHref: 'https://www.linkedin.com/feed/?shareActive=true&text=' + encodeURIComponent(this.shareText()),
+      shareHref: (s.share && s.share.cardUrl)
+        ? 'https://www.linkedin.com/sharing/share-offsite/?url=' + encodeURIComponent(s.share.cardUrl)
+        : 'https://www.linkedin.com/feed/?shareActive=true&text=' + encodeURIComponent(this.shareText()),
       shareUniverse: this.shareUniverse,
       shareOpen: !!s.share,
       shareImgUrl: s.share ? s.share.url : '',
