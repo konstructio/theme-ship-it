@@ -2305,9 +2305,7 @@ class Component extends DCLogic {
             ...(a.readouts ? [
               { k: 'ENG · CPU', v: a.readouts.cpu },
               { k: 'ENG · MEM', v: a.readouts.memory },
-              { k: 'ENG · NET', v: a.readouts.net || '—' },
-              { k: 'ENG · PODS', v: a.readouts.pods },
-              { k: 'ENG · RESTARTS', v: a.readouts.restarts }
+              { k: 'ENG · NET', v: a.readouts.net || '—' }
             ] : [])
           ],
           adChangeBranch: () => this.changeBranch(a.id),
