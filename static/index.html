@@ -407,7 +407,7 @@ input:focus,select:focus{outline:none;border-color:#00ff6f !important;}
                         <span title="persistent cargo hold at /data" style="font-family:'Press Start 2P',monospace;font-size:7px;color:#fdc700;border:1px solid #7b3306;border-radius:3px;padding:3px 6px;">{{ a.cargoLabel }}</span>
                       </sc-if>
                       <sc-if value="{{ a.hasCallsign }}" hint-placeholder-val="{{ false }}">
-                        <span title="vanity callsign" style="font-family:'Reddit Mono',monospace;font-size:10.5px;color:{{ a.callsignFg }};border:1px solid #3b4954;border-radius:3px;padding:2px 6px;">{{ a.callsignLabel }}</span>
+                        <span title="broadcasting from your own domain" style="font-family:'Reddit Mono',monospace;font-size:10.5px;color:{{ a.callsignFg }};border:1px solid #3b4954;border-radius:3px;padding:2px 6px;">{{ a.callsignLabel }}</span>
                       </sc-if>
                       <span style="font-family:'Reddit Mono',monospace;font-size:11px;color:#758c9f;">{{ a.repo }}</span>
                       <div style="flex:1;"></div>
@@ -660,10 +660,10 @@ input:focus,select:focus{outline:none;border-color:#00ff6f !important;}
                       <div title="cargo hold attached" style="position:absolute;left:calc({{ d.left }} + 26px);top:calc({{ d.top }} + 13px);width:7px;height:7px;background:#fdc700;border:1px solid #7b3306;image-rendering:pixelated;animation:su-pop 300ms ease-out;"></div>
                     </sc-if>
                     <sc-if value="{{ d.beacon }}" hint-placeholder-val="{{ false }}">
-                      <div title="verified callsign broadcasting" style="position:absolute;left:calc({{ d.left }} - 5px);top:calc({{ d.top }} - 4px);width:5px;height:5px;border-radius:50%;background:#00ff6f;animation:su-pulse 1.3s ease-in-out infinite;"></div>
+                      <div title="broadcasting on its own domain" style="position:absolute;left:calc({{ d.left }} - 5px);top:calc({{ d.top }} - 4px);width:5px;height:5px;border-radius:50%;background:#00ff6f;animation:su-pulse 1.3s ease-in-out infinite;"></div>
                     </sc-if>
                     <sc-if value="{{ d.beaconPending }}" hint-placeholder-val="{{ false }}">
-                      <div title="callsign verifying" style="position:absolute;left:calc({{ d.left }} - 5px);top:calc({{ d.top }} - 4px);width:5px;height:5px;border-radius:50%;background:#fdc700;animation:su-pulse 0.7s ease-in-out infinite;"></div>
+                      <div title="broadcast signal verifying" style="position:absolute;left:calc({{ d.left }} - 5px);top:calc({{ d.top }} - 4px);width:5px;height:5px;border-radius:50%;background:#fdc700;animation:su-pulse 0.7s ease-in-out infinite;"></div>
                     </sc-if>
                   </sc-for>
                 </div>
@@ -693,7 +693,7 @@ input:focus,select:focus{outline:none;border-color:#00ff6f !important;}
                       <span title="persistent cargo hold at /data" style="font-family:'Press Start 2P',monospace;font-size:7px;color:#fdc700;border:1px solid #7b3306;border-radius:3px;padding:3px 6px;">{{ a.cargoLabel }}</span>
                     </sc-if>
                     <sc-if value="{{ a.hasCallsign }}" hint-placeholder-val="{{ false }}">
-                      <span title="vanity callsign" style="font-family:'Reddit Mono',monospace;font-size:10.5px;color:{{ a.callsignFg }};border:1px solid #3b4954;border-radius:3px;padding:2px 6px;">{{ a.callsignLabel }}</span>
+                      <span title="broadcasting from your own domain" style="font-family:'Reddit Mono',monospace;font-size:10.5px;color:{{ a.callsignFg }};border:1px solid #3b4954;border-radius:3px;padding:2px 6px;">{{ a.callsignLabel }}</span>
                     </sc-if>
                     <span style="font-family:'Reddit Mono',monospace;font-size:11.5px;color:#758c9f;flex:1;min-width:120px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">{{ a.url }}</span>
                     <button onClick="{{ a.stats }}" style="height:30px;padding:0 12px;background:transparent;border:1px solid #3b4954;border-radius:4px;color:#9fafbc;font-size:11px;font-weight:600;cursor:pointer;" style-hover="color:#00ff6f;border-color:#00ff6f;">STATS</button>
@@ -805,7 +805,7 @@ input:focus,select:focus{outline:none;border-color:#00ff6f !important;}
             </sc-if>
             <sc-if value="{{ adHasCargoPanel }}" hint-placeholder-val="{{ false }}">
               <div style="background:#151b1e;border:2px solid #3b4954;border-radius:4px;padding:16px;display:flex;flex-direction:column;gap:10px;">
-                <div style="font:500 10px/14px 'Inter',sans-serif;letter-spacing:0.5px;color:#758c9f;">CARGO &amp; CALLSIGN</div>
+                <div style="font:500 10px/14px 'Inter',sans-serif;letter-spacing:0.5px;color:#758c9f;">CARGO &amp; BROADCAST</div>
                 <sc-if value="{{ adShowCargo }}" hint-placeholder-val="{{ false }}">
                   <div style="display:flex;align-items:center;justify-content:space-between;gap:10px;font-size:12px;">
                     <span style="color:#758c9f;">CARGO HOLD</span>
@@ -827,13 +827,14 @@ input:focus,select:focus{outline:none;border-color:#00ff6f !important;}
                 </sc-if>
                 <sc-if value="{{ adShowDomain }}" hint-placeholder-val="{{ false }}">
                   <div style="display:flex;align-items:center;justify-content:space-between;gap:10px;font-size:12px;border-top:1px solid #1d2629;padding-top:10px;">
-                    <span style="color:#758c9f;">VANITY CALLSIGN</span>
+                    <span style="color:#758c9f;">BROADCAST SIGNAL</span>
                     <span style="font-family:'Reddit Mono',monospace;font-size:11.5px;color:{{ adDomainFg }};">{{ adDomainLabel }}</span>
                   </div>
                   <div style="display:flex;align-items:center;gap:8px;">
                     <input value="{{ adDomainDraft }}" onChange="{{ adSetDomainDraft }}" style="flex:1;height:32px;background:#263237;border:1px solid #3b4954;border-radius:4px;color:#f3f5f7;padding:0 10px;font-size:12px;font-family:'Reddit Mono',monospace;">
                     <button onClick="{{ adSaveDomain }}" style="height:32px;padding:0 12px;background:#263237;border:1px solid #3b4954;border-radius:4px;color:#fdc700;cursor:pointer;font-family:'Press Start 2P',monospace;font-size:8px;" style-hover="border-color:#fdc700;">SAVE</button>
                   </div>
+                  <div style="font-size:10px;color:#4b5d6c;">broadcast from your own domain — enter it, add the TXT record to prove ownership, and this rocket serves from it automatically (clear the field to go back to the platform URL)</div>
                   <sc-if value="{{ adDomainPending }}" hint-placeholder-val="{{ false }}">
                     <div style="border:1px solid #263237;border-radius:4px;padding:8px 10px;background:#111518;display:flex;flex-direction:column;gap:5px;">
                       <div style="font-size:10px;color:#fdc700;">◆ PROVE OWNERSHIP — add this DNS record, verification is automatic:</div>
@@ -2222,7 +2223,7 @@ class Component extends DCLogic {
         const appsOn = s.apps.filter(a => a.planetId === p.id);
         const podsLive = appsOn.filter(a => a.launched).reduce((t, a) => t + a.replicas, 0);
         const pdPf = this.podsFor(podsLive, 240, 3);
-        // satellites carry their rocket's gear: cargo crate + callsign beacon
+        // satellites carry their rocket's gear: cargo crate + broadcast beacon
         const podFlags = [];
         appsOn.filter(a => a.launched).forEach(a => {
           for (let i = 0; i < a.replicas; i++) podFlags.push({ cargo: !!a.volumeSize, beacon: !!(a.customDomain && a.domainVerified), beaconPending: !!(a.customDomain && !a.domainVerified) });
@@ -2320,7 +2321,7 @@ class Component extends DCLogic {
           adTelemetryState: (a.telemetry && a.telemetry.closed) ? '◼ ' + a.telemetry.closed.toUpperCase() : '● LIVE',
           adTelemetryFg: (a.telemetry && a.telemetry.closed) ? '#fdc700' : '#00ff6f',
           adReconnectLogs: () => this.__reopenLogs && this.__reopenLogs(a.id),
-          // cargo hold + vanity callsign (real platform apps only, capability-gated)
+          // cargo hold + broadcast signal / custom domain (real platform apps only, capability-gated)
           adHasCargoPanel: (function (self) {
             const caps = (s.platform && s.platform.caps) || [];
             const real = a.id && a.id.indexOf('app:') === 0;

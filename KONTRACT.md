@@ -12,7 +12,7 @@ vocabulary:
   quota: { name: "Org Fuel Reserves" }
   logs: { name: "Flight Telemetry" }
   volume: { singular: "cargo hold", verb: attach }
-  domain: { singular: "vanity callsign", verb: register }
+  domain: { singular: "broadcast signal", verb: register }
 
 This header is a faithful subset of `theme-manifest.yaml` — the manifest is
 the source of truth; regenerate this block from it, never let the two drift.

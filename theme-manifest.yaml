@@ -26,7 +26,7 @@ vocabulary:
   quota:  { name: "Org Fuel Reserves" }
   logs:   { name: "Flight Telemetry" }
   volume: { singular: "cargo hold", verb: attach }
-  domain: { singular: "vanity callsign", verb: register }
+  domain: { singular: "broadcast signal", verb: register }
 zones:
   metaphor: planet
   tiers:

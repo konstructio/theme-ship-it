@@ -136,7 +136,7 @@
       imageSha: st.image || "",
       msg: st.message || "",
       lastLaunch: st.phase === "Live" ? Date.now() : null,
-      // cargo hold (persistent volume) + vanity callsign (custom domain)
+      // cargo hold (persistent volume) + broadcast signal (custom domain)
       volumeSize: (a.volume && a.volume.size) || "",
       customDomain: a.custom_domain || "",
       domainToken: st.domain_token || "",
@@ -632,7 +632,7 @@
     };
     game.__reopenLogs = openLogs;
 
-    // ── cargo hold (persistent volume) + vanity callsign (domain) ───
+    // ── cargo hold (persistent volume) + broadcast signal (domain) ──
     game.__attachVolume = (appId, size) => {
       const ga = game.state.apps.find((a) => a.id === appId);
       const name = realName(ga);
@@ -691,12 +691,12 @@
         .then(() => {
           game.mutApp(appId, { customDomain: next, domainVerified: false, domainToken: "" });
           if (next) {
-            game.showToast && game.showToast("CALLSIGN REGISTERED", "Prove ownership: add the TXT record shown on the rocket screen.");
+            game.showToast && game.showToast("BROADCAST SIGNAL REGISTERED", "Your rocket will serve from your own domain. Prove ownership: add the TXT record on the rocket screen.");
           }
         })
         .catch((e) => {
           if (e && e.status === 404) refreshApps();
-          game.showToast && game.showToast("CALLSIGN SYNC FAILED", friendlyError(e));
+          game.showToast && game.showToast("BROADCAST SYNC FAILED", friendlyError(e));
         });
     };
 
