@@ -247,6 +247,10 @@
       if (changed) game.setState({ planets });
     };
 
+    // The slug a local claim was created under — the join key between a
+    // just-claimed fiction planet and the real zone it becomes.
+    const planetSlug = (p) => String(p.name || "").toLowerCase().replace(/[^a-z0-9-]/g, "-");
+
     const refreshZones = () => {
       kontract
         .zones(org)
@@ -260,15 +264,35 @@
             // keep the look + accumulated fiction of a matched planet
             return ga ? Object.assign({}, ga, { name: fresh.name, cls: fresh.cls }) : fresh;
           });
-          // local claims (not yet zones) get 3 minutes to materialize; after
-          // that they were either replaced by their real zone or never landed
-          const localKeep = prev.filter(
-            (p) => !(p.id && p.id.indexOf("zone:") === 0) && Date.now() - (p.createdAt || 0) < 180000,
-          );
+          // A local claim whose zone has materialized is REPLACED by it (same
+          // name = same planet — two "development"s is a bug, not a grace);
+          // apps pointing at the local id re-home to the zone id, and the
+          // zone inherits the local planet's look so nothing visually jumps.
+          const zoneBySlug = new Map(next.map((p) => [planetSlug(p), p]));
+          const rehome = new Map();
+          const localKeep = prev.filter((p) => {
+            if (p.id && p.id.indexOf("zone:") === 0) return false;
+            const z = zoneBySlug.get(planetSlug(p));
+            if (z) {
+              rehome.set(p.id, z.id);
+              if (p.look != null && !prevById.has(z.id)) z.look = p.look;
+              return false;
+            }
+            // unmatched local claims get 3 minutes to materialize; after that
+            // they never landed
+            return Date.now() - (p.createdAt || 0) < 180000;
+          });
           const merged = next.concat(localKeep);
           const same =
             merged.length === prev.length && merged.every((p, i) => prev[i] && prev[i].id === p.id);
-          if (!same) game.setState({ planets: merged });
+          if (rehome.size) {
+            const apps = game.state.apps.map((a) =>
+              rehome.has(a.planetId) ? Object.assign({}, a, { planetId: rehome.get(a.planetId) }) : a,
+            );
+            game.setState({ planets: merged, apps });
+          } else if (!same) {
+            game.setState({ planets: merged });
+          }
           resizePlanets();
         })
         .catch(() => {});
@@ -309,9 +333,14 @@
       const appList = Array.isArray(apps) ? apps : [];
       const planets = zoneList.map(zoneToPlanet);
       // server zones are the only durable planets; local fiction survives just
-      // long enough (3 min) for a fresh claim's real zone to materialize
+      // long enough (3 min) for a fresh claim's real zone to materialize —
+      // and never alongside a zone that shares its name
+      const seededSlugs = new Set(planets.map((p) => String(p.name || "").toLowerCase().replace(/[^a-z0-9-]/g, "-")));
       const keepLocal = game.state.planets.filter(
-        (p) => !(p.id && p.id.indexOf("zone:") === 0) && Date.now() - (p.createdAt || 0) < 180000,
+        (p) =>
+          !(p.id && p.id.indexOf("zone:") === 0) &&
+          !seededSlugs.has(String(p.name || "").toLowerCase().replace(/[^a-z0-9-]/g, "-")) &&
+          Date.now() - (p.createdAt || 0) < 180000,
       );
       const allPlanets = planets.concat(keepLocal);
       const gameApps = appList.map((a) => appToGame(a, allPlanets));
