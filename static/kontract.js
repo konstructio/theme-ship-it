@@ -79,6 +79,7 @@ const kontract = (() => {
     discover: (org) => call("discover", org),
     zones: (org) => call("zones", org),
     createZone: (org, zone) => call("createZone", org, zone),
+    deleteZone: (org, name) => call("deleteZone", org, name),
     apps: (org) => call("apps", org),
     appRepos: (org) => call("appRepos", org),
     shipApp: (app) => call("shipApp", app),

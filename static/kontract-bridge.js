@@ -709,6 +709,44 @@
         });
     };
 
+    // Decommission a planet = delete its real zone; two-click armed, only
+    // ever offered for empty planets (the platform 409s otherwise anyway).
+    game.__decomPlanet = (planetId) => {
+      const p = game.state.planets.find((x) => x.id === planetId);
+      if (!p || !(p.id && p.id.indexOf("zone:") === 0)) return;
+      const zoneName = p.id.slice("zone:".length);
+      if (game.state.apps.some((a) => a.planetId === planetId)) {
+        game.showToast && game.showToast("PLANET INHABITED", "Decommission its rockets first — the platform refuses to delete an environment with apps.", "#fdc700");
+        return;
+      }
+      if (game.state.armPlanetDecom !== planetId) {
+        game.setState({ armPlanetDecom: planetId });
+        game.showToast &&
+          game.showToast("ARMED", "Press DECOMMISSION PLANET again within 5s — the environment " + zoneName + " will be deleted.", "#fb2c37");
+        setTimeout(() => {
+          if (game.state.armPlanetDecom === planetId) game.setState({ armPlanetDecom: null });
+        }, 5000);
+        return;
+      }
+      game.setState({ armPlanetDecom: null });
+      kontract
+        .deleteZone(org, zoneName)
+        .then(() => {
+          game.showToast && game.showToast("PLANET DECOMMISSIONED", zoneName + " has left the star charts.", "#fdc700");
+          game.setState({ screen: "hq", viewPlanetId: null });
+          refreshZones();
+          refreshQuota();
+        })
+        .catch((e) => {
+          if (e && e.status === 409) {
+            game.showToast && game.showToast("PLANET INHABITED", "The platform found rockets still living there — remove them first.", "#fdc700");
+          } else {
+            game.showToast && game.showToast("DECOMMISSION FAILED", friendlyError(e));
+          }
+          refreshZones();
+        });
+    };
+
     game.__setDomain = (appId, next) => {
       const ga = game.state.apps.find((a) => a.id === appId);
       const name = realName(ga);

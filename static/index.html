@@ -675,6 +675,9 @@ input:focus,select:focus{outline:none;border-color:#00ff6f !important;}
                 </sc-for>
                 <div style="display:flex;align-items:center;gap:8px;font-size:10px;color:#758c9f;margin-top:4px;"><span style="width:28px;">CPU</span><div style="flex:1;height:8px;background:#263237;border-radius:2px;overflow:hidden;"><div style="height:100%;background:#00ff6f;width:{{ pdCpuPct }};transition:width 400ms;"></div></div><span style="width:72px;text-align:right;color:#9fafbc;">{{ pdCpuText }}</span></div>
                 <div style="display:flex;align-items:center;gap:8px;font-size:10px;color:#758c9f;"><span style="width:28px;">MEM</span><div style="flex:1;height:8px;background:#263237;border-radius:2px;overflow:hidden;"><div style="height:100%;background:#00ff6f;width:{{ pdMemPct }};transition:width 400ms;"></div></div><span style="width:72px;text-align:right;color:#9fafbc;">{{ pdMemText }}</span></div>
+                <sc-if value="{{ pdCanDecom }}" hint-placeholder-val="{{ false }}">
+                  <button onClick="{{ pdDecommission }}" style="margin-top:10px;height:30px;background:#263237;border:1px solid #3b4954;border-radius:4px;color:#fb2c37;cursor:pointer;font-family:'Press Start 2P',monospace;font-size:8px;padding:0 10px;" style-hover="border-color:#fb2c37;">{{ pdDecomLabel }}</button>
+                </sc-if>
               </div>
             </div>
             <div>
@@ -2247,6 +2250,9 @@ class Component extends DCLogic {
           cpuPct: Math.min(100, Math.round(u.cpu / p.cpu * 100)) + '%',
           memPct: Math.min(100, Math.round(u.mem / p.mem * 100)) + '%',
           cpuText: u.cpu + '/' + p.cpu + ' CPU', memText: u.mem + '/' + p.mem + ' GB',
+          canDecom: !!(this.__decomPlanet && p.id && String(p.id).indexOf('zone:') === 0 && appsOn.length === 0),
+          decomLabel: s.armPlanetDecom === p.id ? '☠ CONFIRM? THE ENVIRONMENT DIES' : '☠ DECOMMISSION PLANET',
+          decommission: () => this.__decomPlanet && this.__decomPlanet(p.id),
           apps: appsOn.map(a => {
             const m = this.appMeta(a);
             return {
@@ -2630,6 +2636,7 @@ class Component extends DCLogic {
       // planet detail
       pdName: pd ? pd.name : '', pdCls: pd ? pd.cls : '', pdBs: pd ? pd.bs : '',
       pdPods: pd ? pd.pods : [], pdMeta: pd ? pd.meta : [],
+      pdCanDecom: !!(pd && pd.canDecom), pdDecomLabel: pd ? pd.decomLabel : '', pdDecommission: pd ? pd.decommission : (() => {}),
       pdRingOn: !!(pd && pd.ringOn), pdRingW: pd ? pd.ringW : '0px', pdRingH: pd ? pd.ringH : '0px', pdRingLeft: pd ? pd.ringLeft : '0px', pdRingTop: pd ? pd.ringTop : '0px',
       pdCpuPct: pd ? pd.cpuPct : '0%', pdMemPct: pd ? pd.memPct : '0%',
       pdCpuText: pd ? pd.cpuText : '', pdMemText: pd ? pd.memText : '',
