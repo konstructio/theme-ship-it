@@ -502,10 +502,12 @@
     };
 
     // ── engine readouts: real metrics on the rocket detail screen ───
+    // metric points arrive as {t, v} objects ([t, v] tuples tolerated)
+    const pv = (p) => parseFloat(Array.isArray(p) ? p[1] : p && typeof p === "object" ? p.v : p);
     const fmtPoint = (series, name) => {
       const m = (series || []).find((x) => x.name === name);
       const pts = (m && m.points) || [];
-      const last = pts.length ? parseFloat(pts[pts.length - 1][1]) : NaN;
+      const last = pts.length ? pv(pts[pts.length - 1]) : NaN;
       if (Number.isNaN(last)) return "—";
       if (name === "cpu") return last.toFixed(3) + " CORES";
       if (name === "memory") return (last / 1048576).toFixed(0) + " MB";
@@ -513,12 +515,12 @@
     };
     const seriesPoints = (m, name) => {
       const x = ((m && m.series) || []).find((s) => s.name === name);
-      return (x && x.points) || [];
+      return ((x && x.points) || []).map(pv).filter((v) => !Number.isNaN(v));
     };
     const rawLast = (series, name) => {
       const m = (series || []).find((x) => x.name === name);
       const pts = (m && m.points) || [];
-      const last = pts.length ? parseFloat(pts[pts.length - 1][1]) : NaN;
+      const last = pts.length ? pv(pts[pts.length - 1]) : NaN;
       return Number.isNaN(last) ? null : last;
     };
     const bps = (v) =>
@@ -534,6 +536,34 @@
       val == null ? "—" : limit ? fmt(val) + " · " + Math.round((val / limit) * 100) + "% OF " + fmt(limit) : fmt(val);
     const fCpu = (v) => v.toFixed(3) + " CORES";
     const fMem = (v) => (v / 1048576).toFixed(0) + " MB";
+    // full engine telemetry for the detail screen: readouts + 1h chart series
+    const fetchEngineMetrics = (id, name) => {
+      kontract
+        .metrics(org, name, { range: "1h", step: "60s" })
+        .then((m) => {
+          const series = (m && m.series) || [];
+          const rx = rawLast(series, "network_rx");
+          const tx = rawLast(series, "network_tx");
+          game.mutApp(id, {
+            readouts: {
+              cpu: withCeil(rawLast(series, "cpu"), rawLast(series, "cpu_limit"), fCpu),
+              memory: withCeil(rawLast(series, "memory"), rawLast(series, "memory_limit"), fMem),
+              net: rx == null && tx == null ? "—" : "RX " + (bps(rx) || "—") + " · TX " + (bps(tx) || "—"),
+              pods: fmtPoint(series, "pods"),
+              restarts: fmtPoint(series, "restarts"),
+            },
+            charts: {
+              cpu: seriesPoints(m, "cpu"),
+              cpuLimit: rawLast(series, "cpu_limit"),
+              mem: seriesPoints(m, "memory"),
+              memLimit: rawLast(series, "memory_limit"),
+              rx: seriesPoints(m, "network_rx"),
+              tx: seriesPoints(m, "network_tx"),
+            },
+          });
+        })
+        .catch(() => {});
+    };
     // sparkline feed: refresh cpu/mem series for live apps (best-effort)
     const refreshSparks = () => {
       game.state.apps.forEach((ga) => {
@@ -544,6 +574,12 @@
           .then((m) => game.mutApp(ga.id, { metricsCpu: seriesPoints(m, "cpu"), metricsMem: seriesPoints(m, "memory") }))
           .catch(() => {});
       });
+      // keep the open detail screen's charts fresh on the same tick
+      if (game.state.screen === "appDetail" && game.state.viewAppId) {
+        const ga = game.state.apps.find((a) => a.id === game.state.viewAppId);
+        const nm = realName(ga);
+        if (nm) fetchEngineMetrics(ga.id, nm);
+      }
     };
 
     // ── live runtime telemetry: logs stream follows the stats screen ─
@@ -680,23 +716,7 @@
           game.mutApp(id, { flightLog: tail || "(no build output yet)" });
         })
         .catch(() => {});
-      kontract
-        .metrics(org, name, { range: "1h", step: "30s" })
-        .then((m) => {
-          const series = (m && m.series) || [];
-          const rx = rawLast(series, "network_rx");
-          const tx = rawLast(series, "network_tx");
-          game.mutApp(id, {
-            readouts: {
-              cpu: withCeil(rawLast(series, "cpu"), rawLast(series, "cpu_limit"), fCpu),
-              memory: withCeil(rawLast(series, "memory"), rawLast(series, "memory_limit"), fMem),
-              net: rx == null && tx == null ? "—" : "RX " + (bps(rx) || "—") + " · TX " + (bps(tx) || "—"),
-              pods: fmtPoint(series, "pods"),
-              restarts: fmtPoint(series, "restarts"),
-            },
-          });
-        })
-        .catch(() => {});
+      fetchEngineMetrics(id, name);
     };
 
     // ── decommission: the real deleteApp behind the game action ─────

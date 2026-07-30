@@ -403,6 +403,12 @@ input:focus,select:focus{outline:none;border-color:#00ff6f !important;}
                       <span style="width:8px;height:8px;background:{{ a.dotFg }};animation:{{ a.dotAnim }};"></span>
                       <span style="font-family:'Press Start 2P',monospace;font-size:10px;color:#f3f5f7;">{{ a.name }}</span>
                       <span style="font-size:11px;font-weight:600;color:{{ a.dotFg }};letter-spacing:0.5px;">{{ a.statusLabel }}</span>
+                      <sc-if value="{{ a.hasCargo }}" hint-placeholder-val="{{ false }}">
+                        <span title="persistent cargo hold at /data" style="font-family:'Press Start 2P',monospace;font-size:7px;color:#fdc700;border:1px solid #7b3306;border-radius:3px;padding:3px 6px;">{{ a.cargoLabel }}</span>
+                      </sc-if>
+                      <sc-if value="{{ a.hasCallsign }}" hint-placeholder-val="{{ false }}">
+                        <span title="vanity callsign" style="font-family:'Reddit Mono',monospace;font-size:10.5px;color:{{ a.callsignFg }};border:1px solid #3b4954;border-radius:3px;padding:2px 6px;">{{ a.callsignLabel }}</span>
+                      </sc-if>
                       <span style="font-family:'Reddit Mono',monospace;font-size:11px;color:#758c9f;">{{ a.repo }}</span>
                       <div style="flex:1;"></div>
                       <button onClick="{{ a.stats }}" style="height:30px;padding:0 12px;background:transparent;border:1px solid #3b4954;border-radius:4px;color:#9fafbc;font-size:11px;font-weight:600;cursor:pointer;letter-spacing:0.4px;" style-hover="color:#00ff6f;border-color:#00ff6f;">STATS</button>
@@ -650,6 +656,15 @@ input:focus,select:focus{outline:none;border-color:#00ff6f !important;}
                   </sc-if>
                   <sc-for list="{{ pdPods }}" as="d" hint-placeholder-count="2">
                     <div style="position:absolute;left:{{ d.left }};top:{{ d.top }};width:3px;height:3px;background:transparent;box-shadow:{{ d.bs }};animation:su-pop 300ms ease-out;"></div>
+                    <sc-if value="{{ d.cargo }}" hint-placeholder-val="{{ false }}">
+                      <div title="cargo hold attached" style="position:absolute;left:calc({{ d.left }} + 26px);top:calc({{ d.top }} + 13px);width:7px;height:7px;background:#fdc700;border:1px solid #7b3306;image-rendering:pixelated;animation:su-pop 300ms ease-out;"></div>
+                    </sc-if>
+                    <sc-if value="{{ d.beacon }}" hint-placeholder-val="{{ false }}">
+                      <div title="verified callsign broadcasting" style="position:absolute;left:calc({{ d.left }} - 5px);top:calc({{ d.top }} - 4px);width:5px;height:5px;border-radius:50%;background:#00ff6f;animation:su-pulse 1.3s ease-in-out infinite;"></div>
+                    </sc-if>
+                    <sc-if value="{{ d.beaconPending }}" hint-placeholder-val="{{ false }}">
+                      <div title="callsign verifying" style="position:absolute;left:calc({{ d.left }} - 5px);top:calc({{ d.top }} - 4px);width:5px;height:5px;border-radius:50%;background:#fdc700;animation:su-pulse 0.7s ease-in-out infinite;"></div>
+                    </sc-if>
                   </sc-for>
                 </div>
               </div>
@@ -674,6 +689,12 @@ input:focus,select:focus{outline:none;border-color:#00ff6f !important;}
                     <span style="font-family:'Press Start 2P',monospace;font-size:9px;color:#f3f5f7;">{{ a.name }}</span>
                     <span style="font-size:11px;font-weight:600;color:{{ a.fg }};letter-spacing:0.5px;">{{ a.statusLabel }}</span>
                     <span style="font-size:11.5px;color:#9fafbc;">{{ a.size }}</span>
+                    <sc-if value="{{ a.hasCargo }}" hint-placeholder-val="{{ false }}">
+                      <span title="persistent cargo hold at /data" style="font-family:'Press Start 2P',monospace;font-size:7px;color:#fdc700;border:1px solid #7b3306;border-radius:3px;padding:3px 6px;">{{ a.cargoLabel }}</span>
+                    </sc-if>
+                    <sc-if value="{{ a.hasCallsign }}" hint-placeholder-val="{{ false }}">
+                      <span title="vanity callsign" style="font-family:'Reddit Mono',monospace;font-size:10.5px;color:{{ a.callsignFg }};border:1px solid #3b4954;border-radius:3px;padding:2px 6px;">{{ a.callsignLabel }}</span>
+                    </sc-if>
                     <span style="font-family:'Reddit Mono',monospace;font-size:11.5px;color:#758c9f;flex:1;min-width:120px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">{{ a.url }}</span>
                     <button onClick="{{ a.stats }}" style="height:30px;padding:0 12px;background:transparent;border:1px solid #3b4954;border-radius:4px;color:#9fafbc;font-size:11px;font-weight:600;cursor:pointer;" style-hover="color:#00ff6f;border-color:#00ff6f;">STATS</button>
                   </div>
@@ -687,11 +708,17 @@ input:focus,select:focus{outline:none;border-color:#00ff6f !important;}
       <!-- ════ APP DETAIL (flight record) ════ -->
       <sc-if value="{{ isAppDetail }}" hint-placeholder-val="{{ false }}">
         <div data-screen-label="App detail" style="position:absolute;inset:0;overflow-y:auto;animation:su-fade 200ms ease-out;">
-          <div style="max-width:920px;margin:0 auto;padding:24px;display:flex;flex-direction:column;gap:14px;">
+          <div style="max-width:1240px;margin:0 auto;padding:24px;display:flex;flex-direction:column;gap:14px;">
             <div style="display:flex;align-items:center;gap:14px;flex-wrap:wrap;">
               <button onClick="{{ backFromApp }}" style="width:38px;height:38px;background:#263237;border:1px solid #3b4954;border-radius:4px;color:#9fafbc;cursor:pointer;font-size:15px;" style-hover="color:#00ff6f;border-color:#00ff6f;">←</button>
               <div style="font-family:'Press Start 2P',monospace;font-size:14px;color:#f3f5f7;">{{ adName }}</div>
               <span style="display:inline-flex;align-items:center;gap:7px;font-size:11px;font-weight:600;color:{{ adStatusFg }};letter-spacing:0.5px;"><span style="width:8px;height:8px;background:{{ adStatusFg }};animation:{{ adStatusAnim }};"></span>{{ adStatusLabel }}</span>
+              <sc-if value="{{ adHasVolume }}" hint-placeholder-val="{{ false }}">
+                <span title="persistent cargo hold at /data" style="font-family:'Press Start 2P',monospace;font-size:7px;color:#fdc700;border:1px solid #7b3306;border-radius:3px;padding:4px 7px;">▣ CARGO {{ adVolume }}</span>
+              </sc-if>
+              <sc-if value="{{ adDomainBadge }}" hint-placeholder-val="{{ false }}">
+                <span style="font-family:'Reddit Mono',monospace;font-size:11px;color:{{ adDomainFg }};border:1px solid #3b4954;border-radius:3px;padding:3px 7px;">✦ {{ adDomainLabel }}</span>
+              </sc-if>
               <div style="flex:1;"></div>
               <sc-if value="{{ adHasUrl }}" hint-placeholder-val="{{ false }}">
                 <a href="#" style="font-family:'Reddit Mono',monospace;font-size:12px;">{{ adUrl }}</a>
@@ -719,21 +746,6 @@ input:focus,select:focus{outline:none;border-color:#00ff6f !important;}
                 </sc-for>
               <button onClick="{{ adChangeBranch }}" style="margin-top:8px;height:30px;background:#263237;border:1px solid #3b4954;border-radius:4px;color:#fdc700;cursor:pointer;font-family:'Press Start 2P',monospace;font-size:8px;padding:0 10px;" style-hover="border-color:#fdc700;">⛽ FUEL LINE: {{ adBranch }}</button>
               <button onClick="{{ adDecommission }}" style="margin-top:8px;margin-left:8px;height:30px;background:#263237;border:1px solid #3b4954;border-radius:4px;color:#fb2c37;cursor:pointer;font-family:'Press Start 2P',monospace;font-size:8px;padding:0 10px;" style-hover="border-color:#fb2c37;">{{ adDecomLabel }}</button>
-              <sc-if value="{{ adHasFlightLog }}" hint-placeholder-val="{{ false }}">
-                <div style="margin-top:14px;">
-                  <div style="font-family:'Press Start 2P',monospace;font-size:8px;color:#9fafbc;margin-bottom:6px;">▤ FLIGHT LOG</div>
-                  <pre style="margin:0;max-height:180px;overflow:auto;background:#0c1114;border:1px solid #263237;border-radius:4px;padding:10px;font-family:'Reddit Mono',monospace;font-size:11px;line-height:1.5;color:#9fafbc;white-space:pre-wrap;">{{ adFlightLog }}</pre>
-                </div>
-              </sc-if>
-              <sc-if value="{{ adHasTelemetry }}" hint-placeholder-val="{{ false }}">
-                <div style="margin-top:14px;">
-                  <div style="display:flex;align-items:center;gap:8px;font-family:'Press Start 2P',monospace;font-size:8px;color:#9fafbc;margin-bottom:6px;"><span>▤ FLIGHT TELEMETRY</span><span style="color:{{ adTelemetryFg }};">{{ adTelemetryState }}</span></div>
-                  <pre style="margin:0;max-height:220px;overflow:auto;background:#0c1114;border:1px solid #263237;border-radius:4px;padding:10px;font-family:'Reddit Mono',monospace;font-size:11px;line-height:1.5;color:#9fafbc;white-space:pre-wrap;">{{ adTelemetry }}</pre>
-                  <sc-if value="{{ adTelemetryClosed }}" hint-placeholder-val="{{ false }}">
-                    <button onClick="{{ adReconnectLogs }}" style="margin-top:6px;height:28px;background:#263237;border:1px solid #3b4954;border-radius:4px;color:#00bcff;cursor:pointer;font-family:'Press Start 2P',monospace;font-size:8px;padding:0 10px;" style-hover="border-color:#00bcff;">↻ RECONNECT TELEMETRY</button>
-                  </sc-if>
-                </div>
-              </sc-if>
               </div>
               <div style="background:#151b1e;border:2px solid #3b4954;border-radius:4px;padding:16px;display:flex;flex-direction:column;gap:8px;">
                 <div style="font:500 10px/14px 'Inter',sans-serif;letter-spacing:0.5px;color:#758c9f;">RESOURCES</div>
@@ -742,6 +754,55 @@ input:focus,select:focus{outline:none;border-color:#00ff6f !important;}
                 </sc-for>
               </div>
             </div>
+            <sc-if value="{{ adHasCharts }}" hint-placeholder-val="{{ false }}">
+              <div style="background:#151b1e;border:2px solid #3b4954;border-radius:4px;padding:16px;display:flex;flex-direction:column;gap:12px;">
+                <div style="font:500 10px/14px 'Inter',sans-serif;letter-spacing:0.5px;color:#758c9f;">ENGINE TELEMETRY · LAST HOUR</div>
+                <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(280px,1fr));gap:14px;">
+                  <sc-for list="{{ adCharts }}" as="c" hint-placeholder-count="3">
+                    <div style="display:flex;flex-direction:column;gap:6px;">
+                      <div style="display:flex;align-items:center;justify-content:space-between;gap:8px;flex-wrap:wrap;">
+                        <span style="display:inline-flex;align-items:center;gap:10px;font-family:'Press Start 2P',monospace;font-size:8px;color:#9fafbc;"><span>{{ c.label }}</span><sc-if value="{{ c.has2 }}" hint-placeholder-val="{{ false }}"><span style="font-size:7px;"><span style="color:#8b7bf0;">▬ RX</span> <span style="color:#fdc700;">▬ TX</span></span></sc-if></span>
+                        <span style="font-family:'Reddit Mono',monospace;font-size:11px;color:{{ c.color }};">{{ c.lastLabel }}</span>
+                      </div>
+                      <svg viewBox="0 0 600 90" preserveAspectRatio="none" style="width:100%;height:96px;background:#0c1114;border:1px solid #263237;border-radius:4px;">
+                        <polygon points="{{ c.area }}" fill="{{ c.fill }}"></polygon>
+                        <polyline points="{{ c.pts }}" fill="none" stroke="{{ c.color }}" stroke-width="1.6" vector-effect="non-scaling-stroke"></polyline>
+                        <sc-if value="{{ c.has2 }}" hint-placeholder-val="{{ false }}">
+                          <polyline points="{{ c.pts2 }}" fill="none" stroke="{{ c.color2 }}" stroke-width="1.6" vector-effect="non-scaling-stroke"></polyline>
+                        </sc-if>
+                        <sc-if value="{{ c.hasLimit }}" hint-placeholder-val="{{ false }}">
+                          <line x1="0" y1="{{ c.limitY }}" x2="600" y2="{{ c.limitY }}" stroke="#fb2c37" stroke-width="1" stroke-dasharray="6,5" vector-effect="non-scaling-stroke"></line>
+                        </sc-if>
+                      </svg>
+                      <div style="display:flex;justify-content:space-between;font-size:10px;color:#4b5d6c;"><span>1H AGO</span><span>{{ c.subLabel }}</span><span>NOW</span></div>
+                    </div>
+                  </sc-for>
+                </div>
+              </div>
+            </sc-if>
+            <sc-if value="{{ adHasEngineRoom }}" hint-placeholder-val="{{ false }}">
+              <div style="background:#151b1e;border:2px solid #3b4954;border-radius:4px;padding:16px;">
+                <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(380px,1fr));gap:16px;align-items:start;">
+                  <sc-if value="{{ adHasFlightLog }}" hint-placeholder-val="{{ false }}">
+                    <div style="display:flex;flex-direction:column;gap:6px;">
+                      <div style="font-family:'Press Start 2P',monospace;font-size:8px;color:#9fafbc;">▤ FLIGHT LOG · LAST BUILD</div>
+                      <pre style="margin:0;height:320px;overflow:auto;background:#0c1114;border:1px solid #263237;border-radius:4px;padding:12px;font-family:'Reddit Mono',monospace;font-size:11px;line-height:1.55;color:#9fafbc;white-space:pre-wrap;">{{ adFlightLog }}</pre>
+                    </div>
+                  </sc-if>
+                  <sc-if value="{{ adHasTelemetry }}" hint-placeholder-val="{{ false }}">
+                    <div style="display:flex;flex-direction:column;gap:6px;">
+                      <div style="display:flex;align-items:center;gap:8px;font-family:'Press Start 2P',monospace;font-size:8px;color:#9fafbc;"><span>▤ FLIGHT TELEMETRY</span><span style="color:{{ adTelemetryFg }};">{{ adTelemetryState }}</span></div>
+                      <div style="height:320px;overflow:auto;display:flex;flex-direction:column-reverse;background:#0c1114;border:1px solid #263237;border-radius:4px;padding:12px;">
+                        <pre style="margin:0;font-family:'Reddit Mono',monospace;font-size:11px;line-height:1.55;color:#9fafbc;white-space:pre-wrap;">{{ adTelemetry }}</pre>
+                      </div>
+                      <sc-if value="{{ adTelemetryClosed }}" hint-placeholder-val="{{ false }}">
+                        <button onClick="{{ adReconnectLogs }}" style="height:28px;background:#263237;border:1px solid #3b4954;border-radius:4px;color:#00bcff;cursor:pointer;font-family:'Press Start 2P',monospace;font-size:8px;padding:0 10px;align-self:flex-start;" style-hover="border-color:#00bcff;">↻ RECONNECT TELEMETRY</button>
+                      </sc-if>
+                    </div>
+                  </sc-if>
+                </div>
+              </div>
+            </sc-if>
             <sc-if value="{{ adHasCargoPanel }}" hint-placeholder-val="{{ false }}">
               <div style="background:#151b1e;border:2px solid #3b4954;border-radius:4px;padding:16px;display:flex;flex-direction:column;gap:10px;">
                 <div style="font:500 10px/14px 'Inter',sans-serif;letter-spacing:0.5px;color:#758c9f;">CARGO &amp; CALLSIGN</div>
@@ -1441,6 +1502,17 @@ class Component extends DCLogic {
     const step = w / (vals.length - 1);
     return vals.map((v, i) => (i * step).toFixed(1) + ',' + (h - ((v - min) / span) * h).toFixed(1)).join(' ');
   }
+  // full-size history chart: zero-grounded so quiet apps look quiet, with an
+  // optional limit ceiling drawn into the same scale
+  chartFor(vals, limit, w, h, topOverride) {
+    const v = (vals || []).filter(x => typeof x === 'number' && !Number.isNaN(x));
+    if (v.length < 2) return null;
+    const top = (topOverride || Math.max(...v, limit || 0)) || 1;
+    const step = w / (v.length - 1);
+    const y = (x) => (h - 3 - (Math.min(x, top) / top) * (h - 8)).toFixed(1);
+    const pts = v.map((x, i) => (i * step).toFixed(1) + ',' + y(x)).join(' ');
+    return { pts, area: '0,' + h + ' ' + pts + ' ' + w + ',' + h, limitY: limit ? y(limit) : null, last: v[v.length - 1], peak: Math.max(...v) };
+  }
   mutApp(id, patch) { this.setState({ apps: this.state.apps.map(a => a.id === id ? Object.assign({}, a, patch) : a) }); }
 
   setReplicas(id, d) {
@@ -2066,6 +2138,11 @@ class Component extends DCLogic {
         push: () => this.pushCommit(a.id),
         hasUrl: a.status === 'live', url: a.url, liveHref: a.url ? 'https://' + a.url : '#',
         sizeLabel: a.cpu + ' CPU · ' + a.mem + ' GB / pod',
+        hasCargo: !!a.volumeSize,
+        cargoLabel: '▣ CARGO ' + (a.volumeSize || ''),
+        hasCallsign: !!a.customDomain,
+        callsignLabel: '✦ ' + (a.customDomain || '') + (a.customDomain && !a.domainVerified ? ' · VERIFYING' : ''),
+        callsignFg: a.domainVerified ? '#00ff6f' : '#fdc700',
         hasSpark: a.status === 'live' && !!(a.metricsCpu && a.metricsCpu.length > 1),
         sparkCpu: this.sparkPath(a.metricsCpu, 60, 16),
         sparkMem: this.sparkPath(a.metricsMem, 60, 16),
@@ -2145,6 +2222,15 @@ class Component extends DCLogic {
         const appsOn = s.apps.filter(a => a.planetId === p.id);
         const podsLive = appsOn.filter(a => a.launched).reduce((t, a) => t + a.replicas, 0);
         const pdPf = this.podsFor(podsLive, 240, 3);
+        // satellites carry their rocket's gear: cargo crate + callsign beacon
+        const podFlags = [];
+        appsOn.filter(a => a.launched).forEach(a => {
+          for (let i = 0; i < a.replicas; i++) podFlags.push({ cargo: !!a.volumeSize, beacon: !!(a.customDomain && a.domainVerified), beaconPending: !!(a.customDomain && !a.domainVerified) });
+        });
+        pdPf.items.forEach((it, i) => {
+          const f = podFlags[i] || {};
+          it.cargo = !!f.cargo; it.beacon = !!f.beacon; it.beaconPending = !!f.beaconPending;
+        });
         pd = {
           name: p.name, cls: p.cls,
           bs: S.planetShadow(p.look, 12),
@@ -2162,7 +2248,15 @@ class Component extends DCLogic {
           cpuText: u.cpu + '/' + p.cpu + ' CPU', memText: u.mem + '/' + p.mem + ' GB',
           apps: appsOn.map(a => {
             const m = this.appMeta(a);
-            return { name: a.name, statusLabel: m.label, fg: m.fg, anim: m.anim, size: a.cpu + ' CPU · ' + a.mem + ' GB × ' + a.replicas, url: a.launched ? a.url : 'not launched yet', stats: () => this.openAppStats(a.id, 'planetDetail') };
+            return {
+              name: a.name, statusLabel: m.label, fg: m.fg, anim: m.anim,
+              size: a.cpu + ' CPU · ' + a.mem + ' GB × ' + a.replicas,
+              url: a.launched ? a.url : 'not launched yet',
+              hasCargo: !!a.volumeSize, cargoLabel: '▣ ' + (a.volumeSize || ''),
+              hasCallsign: !!a.customDomain, callsignLabel: '✦ ' + (a.customDomain || ''),
+              callsignFg: a.domainVerified ? '#00ff6f' : '#fdc700',
+              stats: () => this.openAppStats(a.id, 'planetDetail')
+            };
           }),
           empty: appsOn.length === 0
         };
@@ -2255,6 +2349,26 @@ class Component extends DCLogic {
           adDomainHost: '_konduit-challenge.' + (a.customDomain || ''),
           adDomainToken: 'konduit-verify=' + (a.domainToken || ''),
           adCopyToken: () => { try { navigator.clipboard.writeText('konduit-verify=' + (a.domainToken || '')); } catch (_) {} },
+          adDomainBadge: !!a.customDomain,
+          adHasEngineRoom: !!(a.flightLog || a.telemetry),
+          adHasCharts: !!(a.charts && a.charts.cpu && a.charts.cpu.length > 1),
+          adCharts: (function (self) {
+            const ch = a.charts || {};
+            if (!ch.cpu || ch.cpu.length < 2) return [];
+            const fC = (v) => v >= 10 ? String(Math.round(v)) : v >= 1 ? v.toFixed(2) : v.toFixed(3);
+            const fM = (v) => Math.round(v / 1048576) + ' MB';
+            const fR = (v) => v == null ? '—' : v >= 1048576 ? (v / 1048576).toFixed(1) + ' MB/S' : v >= 1024 ? (v / 1024).toFixed(1) + ' KB/S' : Math.round(v) + ' B/S';
+            const out = [];
+            const cpu = self.chartFor(ch.cpu, ch.cpuLimit, 600, 90);
+            if (cpu) out.push({ label: 'CPU · CORES', color: '#00ff6f', fill: 'rgba(0,255,111,0.09)', pts: cpu.pts, area: cpu.area, hasLimit: !!cpu.limitY, limitY: cpu.limitY || '0', lastLabel: fC(cpu.last) + ' CORES', subLabel: ch.cpuLimit ? 'LIMIT ' + fC(ch.cpuLimit) + ' CORES' : 'PEAK ' + fC(cpu.peak), has2: false, pts2: '', color2: '' });
+            const mem = self.chartFor(ch.mem, ch.memLimit, 600, 90);
+            if (mem) out.push({ label: 'MEMORY', color: '#00bcff', fill: 'rgba(0,188,255,0.09)', pts: mem.pts, area: mem.area, hasLimit: !!mem.limitY, limitY: mem.limitY || '0', lastLabel: fM(mem.last), subLabel: ch.memLimit ? 'LIMIT ' + fM(ch.memLimit) : 'PEAK ' + fM(mem.peak), has2: false, pts2: '', color2: '' });
+            const netTop = Math.max.apply(null, (ch.rx || []).concat(ch.tx || [], [1]));
+            const rx = self.chartFor(ch.rx, null, 600, 90, netTop);
+            const tx = self.chartFor(ch.tx, null, 600, 90, netTop);
+            if (rx || tx) out.push({ label: 'NETWORK', color: '#8b7bf0', fill: 'rgba(139,123,240,0.09)', pts: rx ? rx.pts : '', area: rx ? rx.area : '', hasLimit: false, limitY: '0', lastLabel: 'RX ' + fR(rx && rx.last) + ' · TX ' + fR(tx && tx.last), subLabel: 'PEAK RX ' + fR(rx && rx.peak) + ' · TX ' + fR(tx && tx.peak), has2: !!tx, pts2: tx ? tx.pts : '', color2: '#fdc700' });
+            return out;
+          })(this),
           pods: podRows,
           log: (a.history || []).map(h => ({ sha: h.sha, msg: h.msg, result: h.result, fg: '#00ff6f', dur: h.dur, ago: this.timeAgo(h.at) })),
           logEmpty: !(a.history || []).length
