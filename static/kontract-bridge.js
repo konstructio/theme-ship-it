@@ -110,6 +110,9 @@
   const planetForZone = (planets, zoneRef) =>
     (zoneRef && planets.find((p) => p.id === "zone:" + zoneRef)) || planets[0] || null;
 
+  // real flight-log entries per app name, filled from kontract.deployments()
+  const deploymentsCache = {};
+
   const appToGame = (a, planets) => {
     const st = a.status || {};
     const planet = planetForZone(planets, a.zone_ref);
@@ -127,7 +130,7 @@
       bg: false,
       launched: st.phase === "Live",
       createdAt: Date.now(),
-      history: [],
+      history: deploymentsCache[a.name] || [],
       checks: 0,
       deploys: 1,
       url: (st.url || "").replace("https://", ""),
@@ -140,6 +143,7 @@
       volumeSize: (a.volume && a.volume.size) || "",
       customDomain: a.custom_domain || "",
       env: Array.isArray(a.env) ? a.env : [],
+      publicUrl: !!a.public_url_enabled,
       domainToken: st.domain_token || "",
       domainVerified: !!st.domain_verified,
     };
@@ -318,6 +322,17 @@
         });
         refreshQuota();
         if (game.__startAppSync) game.__startAppSync();
+        // regions = managed workload clusters; older platforms without the
+        // op just leave the register modal's region row hidden
+        if (typeof kontract.regions === "function") {
+          kontract
+            .regions(org)
+            .then((list) => {
+              const regions = Array.isArray(list) ? list : [];
+              game.setState({ platform: Object.assign({}, game.state.platform, { regions }) });
+            })
+            .catch(() => {});
+        }
       })
       .catch(() => {
         // no discovery -> no capability knowledge -> classic polling
@@ -480,21 +495,28 @@
       // doesn't allow (the picker only offers entitled keys)
       const sizes = (game.state.platform || {}).sizes || [];
       const size = (r.size && sizes.some((s) => s.key === r.size) && r.size) || (sizes[0] && sizes[0].key) || "s";
+      const port = parseInt(r.port, 10);
+      const subPath = (r.subPath || "").trim().replace(/^\/+|\/+$/g, "");
+      const regions = (game.state.platform || {}).regions || [];
+      const region = r.region || (regions[0] && regions[0].name) || "";
+      const payload = {
+        // environment omitted on purpose: the zone IS the environment and
+        // the platform mirrors zone_ref into it
+        namespace: org,
+        app_name: name,
+        repo_url: repoUrl,
+        repo_name: repoName,
+        branch: r.branch || "main",
+        port: port > 0 && port < 65536 ? port : 8080,
+        replicas: r.replicas || 1,
+        public_url_enabled: r.publicUrl !== false,
+        zone_ref: zoneRef,
+        size,
+      };
+      if (subPath) payload.sub_path = subPath;
+      if (region) payload.region = region;
       kontract
-        .shipApp({
-          // environment omitted on purpose: the zone IS the environment and
-          // the platform mirrors zone_ref into it
-          namespace: org,
-          app_name: name,
-          repo_url: repoUrl,
-          repo_name: repoName,
-          branch: r.branch || "main",
-          port: 8080,
-          replicas: r.replicas || 1,
-          public_url_enabled: true,
-          zone_ref: zoneRef,
-          size,
-        })
+        .shipApp(payload)
         .then(() => game.__refreshQuota && game.__refreshQuota())
         .catch((e) => {
           game.showToast && game.showToast("SHIP SYNC FAILED", friendlyError(e));
@@ -790,6 +812,38 @@
         });
     };
 
+    // ── flight log = real kpack builds (deployment history) ─────────
+    const reasonLabel = (d, branch) => {
+      const r = String(d.reason || "").toUpperCase();
+      if (r.indexOf("COMMIT") !== -1) return "push to " + (branch || "main");
+      if (r.indexOf("TRIGGER") !== -1) return "manual relaunch";
+      if (r.indexOf("CONFIG") !== -1) return "config change";
+      if (r.indexOf("STACK") !== -1 || r.indexOf("BUILDPACK") !== -1) return "platform stack refresh";
+      return r ? r.toLowerCase() : "build";
+    };
+    const refreshDeployments = (id, name, branch) => {
+      if (typeof kontract.deployments !== "function") return;
+      kontract
+        .deployments(org, name)
+        .then((list) => {
+          const hist = (Array.isArray(list) ? list : []).map((d) => {
+            const started = Date.parse(d.started_at || "") || 0;
+            const finished = Date.parse(d.finished_at || "") || 0;
+            return {
+              sha: String(d.revision || d.ref || "").slice(0, 7),
+              msg: "BUILD #" + (d.build || "?") + " \u00b7 " + reasonLabel(d, branch),
+              result: d.phase === "Succeeded" ? "DELIVERED" : d.phase === "Failed" ? "FAILED" : "BUILDING",
+              dur: started && finished ? fmtDur(finished - started) : "",
+              at: started || Date.now(),
+            };
+          });
+          deploymentsCache[name] = hist;
+          game.mutApp(id, { history: hist, deploys: hist.length });
+        })
+        .catch(() => {});
+    };
+    game.__refreshDeployments = refreshDeployments;
+
     const origOpenStats = game.openAppStats.bind(game);
     game.openAppStats = function (id, from) {
       origOpenStats(id, from);
@@ -798,6 +852,7 @@
       const ga = game.state.apps.find((a) => a.id === id);
       const name = realName(ga);
       if (!name) return;
+      refreshDeployments(id, name, ga.branch);
       kontract
         .buildLogs(org, name)
         .then((bl) => {
@@ -807,6 +862,19 @@
         })
         .catch(() => {});
       fetchEngineMetrics(id, name);
+    };
+
+    // ── public URL: broadcast vs silent running ─────────────────────
+    game.__togglePublicUrl = (appId) => {
+      const ga = game.state.apps.find((a) => a.id === appId);
+      const name = realName(ga);
+      if (!name) return;
+      const next = !ga.publicUrl;
+      game.mutApp(appId, { publicUrl: next });
+      kontract.updateApp(org, name, { public_url_enabled: next }).catch((e) => {
+        game.mutApp(appId, { publicUrl: !next });
+        game.showToast && game.showToast("SIGNAL SYNC FAILED", friendlyError(e));
+      });
     };
 
     // ── decommission: the real deleteApp behind the game action ─────
@@ -899,6 +967,11 @@
               volumeSize: (real.volume && real.volume.size) || "",
               customDomain: real.custom_domain || "",
               env: Array.isArray(real.env) ? real.env : [],
+              publicUrl: !!real.public_url_enabled,
+              // history is real deployments or nothing — a fictional entry the
+              // game invented is purged on the next sync (no fake data)
+              history: deploymentsCache[real.name] || [],
+              deploys: (deploymentsCache[real.name] || []).length || ga.deploys,
               domainToken: st.domain_token || "",
               domainVerified: !!st.domain_verified,
             });
@@ -911,6 +984,11 @@
               (p.id === launchId && !list.some((r) => "app:" + r.name === p.id)),
           );
           game.setState({ apps: next.concat(keep) });
+          if (game.state.screen === "appDetail" && game.state.viewAppId) {
+            const va = game.state.apps.find((a) => a.id === game.state.viewAppId);
+            const vn = realName(va);
+            if (vn) refreshDeployments(va.id, vn, va.branch);
+          }
           resizePlanets();
           scheduleQuota();
         })
