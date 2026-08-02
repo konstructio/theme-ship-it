@@ -139,6 +139,7 @@
       // cargo hold (persistent volume) + broadcast signal (custom domain)
       volumeSize: (a.volume && a.volume.size) || "",
       customDomain: a.custom_domain || "",
+      env: Array.isArray(a.env) ? a.env : [],
       domainToken: st.domain_token || "",
       domainVerified: !!st.domain_verified,
     };
@@ -747,6 +748,28 @@
         });
     };
 
+    // Flight provisions = environment variables. Saving PATCHes env whole —
+    // the platform relaunches the rocket to take them aboard.
+    game.__saveProvisions = (appId, rows) => {
+      const ga = game.state.apps.find((a) => a.id === appId);
+      const name = realName(ga);
+      if (!name) return;
+      const env = (rows || [])
+        .map((r) => ({ name: String(r.name || "").trim(), value: String(r.value == null ? "" : r.value) }))
+        .filter((r) => r.name);
+      kontract
+        .updateApp(org, name, { env })
+        .then(() => {
+          game.mutApp(appId, { env, status: "building" });
+          game.setState({ provEdit: null });
+          game.showToast && game.showToast("PROVISIONS LOADED", "The rocket relaunches to take " + env.length + " provision" + (env.length === 1 ? "" : "s") + " aboard.", "#fdc700");
+        })
+        .catch((e) => {
+          if (e && e.status === 404) refreshApps();
+          game.showToast && game.showToast("PROVISIONS REFUSED", friendlyError(e));
+        });
+    };
+
     game.__setDomain = (appId, next) => {
       const ga = game.state.apps.find((a) => a.id === appId);
       const name = realName(ga);
@@ -770,7 +793,7 @@
     const origOpenStats = game.openAppStats.bind(game);
     game.openAppStats = function (id, from) {
       origOpenStats(id, from);
-      game.setState({ domainDraft: null });
+      game.setState({ domainDraft: null, provEdit: null });
       openLogs(id);
       const ga = game.state.apps.find((a) => a.id === id);
       const name = realName(ga);
@@ -875,6 +898,7 @@
               lastLaunch: status === "live" && !ga.lastLaunch ? Date.now() : ga.lastLaunch,
               volumeSize: (real.volume && real.volume.size) || "",
               customDomain: real.custom_domain || "",
+              env: Array.isArray(real.env) ? real.env : [],
               domainToken: st.domain_token || "",
               domainVerified: !!st.domain_verified,
             });

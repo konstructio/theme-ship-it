@@ -869,6 +869,30 @@ input:focus,select:focus{outline:none;border-color:#00ff6f !important;}
                 </sc-if>
               </div>
             </sc-if>
+            <sc-if value="{{ adHasProvPanel }}" hint-placeholder-val="{{ false }}">
+              <div style="background:#151b1e;border:2px solid #3b4954;border-radius:4px;padding:16px;display:flex;flex-direction:column;gap:10px;">
+                <div style="display:flex;align-items:center;gap:10px;">
+                  <div style="font:500 10px/14px 'Inter',sans-serif;letter-spacing:0.5px;color:#758c9f;">FLIGHT PROVISIONS</div>
+                  <span style="font-size:10px;color:#4b5d6c;">environment variables — loading new provisions relaunches the rocket</span>
+                  <div style="flex:1;"></div>
+                  <button onClick="{{ adAddProv }}" style="height:26px;padding:0 10px;background:#263237;border:1px solid #3b4954;border-radius:4px;color:#00bcff;cursor:pointer;font-family:'Press Start 2P',monospace;font-size:8px;" style-hover="border-color:#00bcff;">+ PROVISION</button>
+                </div>
+                <sc-for list="{{ adProvRows }}" as="r" hint-placeholder-count="1">
+                  <div style="display:grid;grid-template-columns:1fr 2fr 30px;gap:8px;align-items:center;">
+                    <input value="{{ r.name }}" onChange="{{ r.setName }}" aria-label="provision name" style="height:30px;background:#263237;border:1px solid #3b4954;border-radius:4px;color:#00ff6f;padding:0 10px;font-size:11.5px;font-family:'Reddit Mono',monospace;">
+                    <input value="{{ r.value }}" onChange="{{ r.setValue }}" aria-label="provision value" style="height:30px;background:#263237;border:1px solid #3b4954;border-radius:4px;color:#f3f5f7;padding:0 10px;font-size:11.5px;font-family:'Reddit Mono',monospace;">
+                    <button onClick="{{ r.remove }}" style="width:30px;height:30px;background:#263237;border:1px solid #3b4954;border-radius:4px;color:#fb2c37;cursor:pointer;font-size:12px;" style-hover="border-color:#fb2c37;">✕</button>
+                  </div>
+                </sc-for>
+                <sc-if value="{{ adProvDirty }}" hint-placeholder-val="{{ false }}">
+                  <div style="display:flex;gap:10px;align-items:center;">
+                    <button onClick="{{ adSaveProv }}" style="height:32px;padding:0 14px;background:#00ff6f;border:none;border-radius:4px;color:#111518;cursor:pointer;font-family:'Press Start 2P',monospace;font-size:8px;" style-hover="background:#05df72;">LOAD PROVISIONS ▶</button>
+                    <button onClick="{{ adDiscardProv }}" style="height:32px;padding:0 12px;background:transparent;border:1px solid #3b4954;border-radius:4px;color:#9fafbc;cursor:pointer;font-family:'Press Start 2P',monospace;font-size:8px;" style-hover="color:#f3f5f7;">DISCARD</button>
+                    <span style="font-size:10px;color:#fdc700;">unsaved changes — the rocket relaunches when you load</span>
+                  </div>
+                </sc-if>
+              </div>
+            </sc-if>
             <div style="background:#151b1e;border:2px solid #3b4954;border-radius:4px;padding:16px;display:flex;flex-direction:column;gap:8px;">
               <div style="font:500 10px/14px 'Inter',sans-serif;letter-spacing:0.5px;color:#758c9f;">PODS</div>
               <sc-for list="{{ adPods }}" as="p" hint-placeholder-count="2">
@@ -2381,6 +2405,24 @@ class Component extends DCLogic {
           adDomainToken: 'konduit-verify=' + (a.domainToken || ''),
           adCopyToken: () => { try { navigator.clipboard.writeText('konduit-verify=' + (a.domainToken || '')); } catch (_) {} },
           adDomainBadge: !!a.customDomain,
+          adProvRows: (function (self) {
+            const base = (s.provEdit && s.provEdit.appId === a.id) ? s.provEdit.rows : (a.env || []).map(e => ({ name: e.name, value: e.value }));
+            const edit = (rows) => self.setState({ provEdit: { appId: a.id, rows } });
+            return base.map((r, i) => ({
+              name: r.name, value: r.value,
+              setName: (ev) => { const rows = base.map(x => ({ ...x })); rows[i].name = ev.target.value; edit(rows); },
+              setValue: (ev) => { const rows = base.map(x => ({ ...x })); rows[i].value = ev.target.value; edit(rows); },
+              remove: () => { const rows = base.map(x => ({ ...x })); rows.splice(i, 1); edit(rows); }
+            }));
+          })(this),
+          adProvDirty: !!(s.provEdit && s.provEdit.appId === a.id),
+          adAddProv: () => {
+            const base = (s.provEdit && s.provEdit.appId === a.id) ? s.provEdit.rows : (a.env || []).map(e => ({ name: e.name, value: e.value }));
+            this.setState({ provEdit: { appId: a.id, rows: base.concat([{ name: '', value: '' }]) } });
+          },
+          adSaveProv: () => this.__saveProvisions && this.__saveProvisions(a.id, (s.provEdit && s.provEdit.rows) || []),
+          adDiscardProv: () => this.setState({ provEdit: null }),
+          adHasProvPanel: !!(this.__saveProvisions && a.id && a.id.indexOf('app:') === 0),
           adHasEngineRoom: !!(a.flightLog || a.telemetry),
           adHasCharts: !!(a.charts && a.charts.cpu && a.charts.cpu.length > 1),
           adCharts: (function (self) {
