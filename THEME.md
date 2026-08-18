@@ -1,4 +1,4 @@
-# KONTRACT
+# THEME
 version: v2
 theme: ship-it
 profile: game

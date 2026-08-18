@@ -1,13 +1,13 @@
 /*
- * kontract-bridge — wires the Ship It! prototype to the kontract without
+ * theme-bridge — wires the Ship It! prototype to the theme without
  * touching the game code. The game exposes its logic instance as
  * window.__shipit on mount; this bridge seeds real data into it and wraps
  * the handful of actions that must hit the platform:
  *
- *   planets  <- zones        (claim/buy planet -> POST /kontract/zones)
- *   rockets  <- apps         (register app     -> POST /kontract/app, real
+ *   planets  <- zones        (claim/buy planet -> POST /theme/zones)
+ *   rockets  <- apps         (register app     -> POST /theme/app, real
  *                             statuses/URLs polled onto the game state)
- *   hero/XP  <- character    (persist          -> PUT /kontract/character)
+ *   hero/XP  <- character    (persist          -> PUT /theme/character)
  *
  * Cinematics, audio, XP math and the shop fiction stay 100% client-side.
  * Without a launcher session the bridge stands down and the game runs as
@@ -15,7 +15,7 @@
  */
 (() => {
   const org = new URLSearchParams(location.search).get("org");
-  if (!org || typeof kontract === "undefined" || !kontract.hasToken()) return;
+  if (!org || typeof theme === "undefined" || !theme.hasToken()) return;
 
   const GIT_BASE = "https://github.com/konstructio/";
   const BAND_CAPS = { small: [10, 10], medium: [20, 20], large: [30, 30] };
@@ -110,7 +110,7 @@
   const planetForZone = (planets, zoneRef) =>
     (zoneRef && planets.find((p) => p.id === "zone:" + zoneRef)) || planets[0] || null;
 
-  // real flight-log entries per app name, filled from kontract.deployments()
+  // real flight-log entries per app name, filled from theme.deployments()
   const deploymentsCache = {};
 
   const appToGame = (a, planets) => {
@@ -183,7 +183,7 @@
     const refreshQuota = () => {
       const caps = (game.state.platform || {}).caps || [];
       if (caps.indexOf("quota") === -1) return;
-      kontract
+      theme
         .quota(org)
         .then((q) => {
           // Numeric remaining feeds the planets: org allowance is the ONE
@@ -257,7 +257,7 @@
     const planetSlug = (p) => String(p.name || "").toLowerCase().replace(/[^a-z0-9-]/g, "-");
 
     const refreshZones = () => {
-      kontract
+      theme
         .zones(org)
         .then((zones) => {
           const list = Array.isArray(zones) ? zones : [];
@@ -306,7 +306,7 @@
 
     game.__refreshQuota = refreshQuota;
 
-    kontract
+    theme
       .discover(org)
       .then((disc) => {
         const caps = (disc && disc.capabilities) || [];
@@ -324,8 +324,8 @@
         if (game.__startAppSync) game.__startAppSync();
         // regions = managed workload clusters; older platforms without the
         // op just leave the register modal's region row hidden
-        if (typeof kontract.regions === "function") {
-          kontract
+        if (typeof theme.regions === "function") {
+          theme
             .regions(org)
             .then((list) => {
               const regions = Array.isArray(list) ? list : [];
@@ -341,9 +341,9 @@
 
     // ── seed real state ─────────────────────────────────────────────
     Promise.all([
-      kontract.zones(org).catch(() => []),
-      kontract.apps(org).catch(() => []),
-      kontract.character(org).catch(() => ({})),
+      theme.zones(org).catch(() => []),
+      theme.apps(org).catch(() => []),
+      theme.character(org).catch(() => ({})),
     ]).then(([zones, apps, character]) => {
       const zoneList = Array.isArray(zones) ? zones : [];
       const appList = Array.isArray(apps) ? apps : [];
@@ -391,7 +391,7 @@
     });
 
     // ── real repo picker: the org's registered repositories ────────
-    kontract
+    theme
       .appRepos(org)
       .then(async (repos) => {
         let list = (Array.isArray(repos) ? repos : [])
@@ -408,7 +408,7 @@
         if (!list.length) {
           // No registered App Repositories yet — derive the picker from the
           // org's existing apps so re-shipping a known repo always works.
-          const apps = await kontract.apps(org).catch(() => []);
+          const apps = await theme.apps(org).catch(() => []);
           const seen = {};
           list = (Array.isArray(apps) ? apps : [])
             .map((a) => {
@@ -436,7 +436,7 @@
       origPersist();
       clearTimeout(saveT);
       saveT = setTimeout(() => {
-        kontract.saveCharacter(org, characterFromGame(game.state)).catch(() => {});
+        theme.saveCharacter(org, characterFromGame(game.state)).catch(() => {});
       }, 1500);
     };
 
@@ -447,7 +447,7 @@
       origClaim();
       const name = (d.name || "").toLowerCase().replace(/[^a-z0-9-]/g, "-");
       if (!name) return;
-      kontract
+      theme
         .createZone(org, {
           name,
           display_name: d.name,
@@ -461,7 +461,7 @@
         });
     };
 
-    // ── register app -> real KontractApp ──────────────────────────────
+    // ── register app -> real ThemedApp ──────────────────────────────
     const origRegister = game.submitRegister.bind(game);
     game.submitRegister = function () {
       const r = game.state.reg;
@@ -515,7 +515,7 @@
       };
       if (subPath) payload.sub_path = subPath;
       if (region) payload.region = region;
-      kontract
+      theme
         .shipApp(payload)
         .then(() => game.__refreshQuota && game.__refreshQuota())
         .catch((e) => {
@@ -532,7 +532,7 @@
       const ga = game.state.apps.find((a) => a.id === id);
       const name = realName(ga);
       if (name && ga) {
-        kontract
+        theme
           .updateApp(org, name, { replicas: ga.replicas })
           .then(() => game.__refreshQuota && game.__refreshQuota())
           .catch((e) => {
@@ -549,7 +549,7 @@
       // relaunching an already-delivered app is a real redeploy; first
       // launches are already building from registration
       if (name && ga && ga.launched) {
-        kontract.redeploy(org, name).catch(() => {});
+        theme.redeploy(org, name).catch(() => {});
       }
     };
 
@@ -590,7 +590,7 @@
     const fMem = (v) => (v / 1048576).toFixed(0) + " MB";
     // full engine telemetry for the detail screen: readouts + 1h chart series
     const fetchEngineMetrics = (id, name) => {
-      kontract
+      theme
         .metrics(org, name, { range: "1h", step: "60s" })
         .then((m) => {
           const series = (m && m.series) || [];
@@ -621,7 +621,7 @@
       game.state.apps.forEach((ga) => {
         const name = realName(ga);
         if (!name || ga.status !== "live") return;
-        kontract
+        theme
           .metrics(org, name, { range: "1h", step: "2m" })
           .then((m) => game.mutApp(ga.id, { metricsCpu: seriesPoints(m, "cpu"), metricsMem: seriesPoints(m, "memory") }))
           .catch(() => {});
@@ -653,14 +653,14 @@
     };
     const openLogs = (appId) => {
       const caps = (game.state.platform || {}).caps || [];
-      if (caps.indexOf("runtime-logs") === -1 || typeof kontract.logs !== "function") return;
+      if (caps.indexOf("runtime-logs") === -1 || typeof theme.logs !== "function") return;
       const ga = game.state.apps.find((a) => a.id === appId);
       const name = realName(ga);
       if (!name) return;
       closeLogs();
       logAppId = appId;
       game.mutApp(appId, { telemetry: { lines: [], closed: "" } });
-      logSub = kontract.logs(
+      logSub = theme.logs(
         org,
         name,
         (l) => {
@@ -689,7 +689,7 @@
       const ga = game.state.apps.find((a) => a.id === appId);
       const name = realName(ga);
       if (!name) return;
-      kontract
+      theme
         .updateApp(org, name, { volume: { size, mount_path: "/data" } })
         .then(() => {
           game.mutApp(appId, { volumeSize: size, replicas: 1 });
@@ -719,7 +719,7 @@
         return;
       }
       game.setState({ armDetach: null });
-      kontract
+      theme
         .updateApp(org, name, { volume: { size: "" } })
         .then(() => {
           game.mutApp(appId, { volumeSize: "" });
@@ -752,7 +752,7 @@
         return;
       }
       game.setState({ armPlanetDecom: null });
-      kontract
+      theme
         .deleteZone(org, zoneName)
         .then(() => {
           game.showToast && game.showToast("PLANET DECOMMISSIONED", zoneName + " has left the star charts.", "#fdc700");
@@ -779,7 +779,7 @@
       const env = (rows || [])
         .map((r) => ({ name: String(r.name || "").trim(), value: String(r.value == null ? "" : r.value) }))
         .filter((r) => r.name);
-      kontract
+      theme
         .updateApp(org, name, { env })
         .then(() => {
           game.mutApp(appId, { env, status: "building" });
@@ -798,7 +798,7 @@
       if (!name) return;
       next = String(next == null ? "" : next).trim();
       if (next === (ga.customDomain || "")) return;
-      kontract
+      theme
         .updateApp(org, name, { custom_domain: next })
         .then(() => {
           game.mutApp(appId, { customDomain: next, domainVerified: false, domainToken: "" });
@@ -822,8 +822,8 @@
       return r ? r.toLowerCase() : "build";
     };
     const refreshDeployments = (id, name, branch) => {
-      if (typeof kontract.deployments !== "function") return;
-      kontract
+      if (typeof theme.deployments !== "function") return;
+      theme
         .deployments(org, name)
         .then((list) => {
           const hist = (Array.isArray(list) ? list : []).map((d) => {
@@ -853,7 +853,7 @@
       const name = realName(ga);
       if (!name) return;
       refreshDeployments(id, name, ga.branch);
-      kontract
+      theme
         .buildLogs(org, name)
         .then((bl) => {
           const raw = (bl && bl.logs) || "";
@@ -871,7 +871,7 @@
       if (!name) return;
       const next = !ga.publicUrl;
       game.mutApp(appId, { publicUrl: next });
-      kontract.updateApp(org, name, { public_url_enabled: next }).catch((e) => {
+      theme.updateApp(org, name, { public_url_enabled: next }).catch((e) => {
         game.mutApp(appId, { publicUrl: !next });
         game.showToast && game.showToast("SIGNAL SYNC FAILED", friendlyError(e));
       });
@@ -887,7 +887,7 @@
       // origDecommission only proceeds past its confirm() by removing the
       // app — if it is gone from state, the player confirmed.
       if (name && !game.state.apps.some((a) => a.id === appId)) {
-        kontract
+        theme
           .deleteApp(org, name)
           .then(() => game.__refreshQuota && game.__refreshQuota())
           .catch(() => {
@@ -905,7 +905,7 @@
       const after = game.state.apps.find((a) => a.id === appId);
       const name = realName(after);
       if (name && after && after.branch !== prev) {
-        kontract.updateApp(org, name, { branch: after.branch }).catch(() => {
+        theme.updateApp(org, name, { branch: after.branch }).catch(() => {
           game.showToast && game.showToast("FUEL LINE SYNC FAILED", "The platform kept " + (prev || "main") + ".");
           game.mutApp(appId, { branch: prev });
         });
@@ -916,7 +916,7 @@
     setTimeout(refreshSparks, 2500);
     setInterval(refreshSparks, 30000);
     const refreshApps = () => {
-      kontract
+      theme
         .apps(org)
         .then((apps) => {
           const list = Array.isArray(apps) ? apps : [];
@@ -1009,11 +1009,11 @@
     };
     let eventsSub = null;
     const watchApps = () => {
-      if (typeof kontract.appEvents !== "function") {
+      if (typeof theme.appEvents !== "function") {
         startPolling();
         return;
       }
-      eventsSub = kontract.appEvents(
+      eventsSub = theme.appEvents(
         org,
         () => refreshApps(),
         (reason) => {
