@@ -1,5 +1,5 @@
-// kontract-theme-ship-it — the Ship It! retro arcade theme.
-// Serves the static frontend; all kontract logic lives in the browser.
+// theme-ship-it — the Ship It! retro arcade theme.
+// Serves the static frontend; all theme logic lives in the browser.
 //
 // Assets are embedded in the binary (go:embed) because cloud-native
 // buildpacks strip source files from the final image — a bare
