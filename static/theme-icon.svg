@@ -1,0 +1,24 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64">
+  <!-- Ship It! — pixel rocket mid-launch, drawn on an 8px grid so it stays
+       crisp at any tile size. Theme palette: signal green hull, gold flame. -->
+  <!-- exhaust flame -->
+  <rect x="28" y="52" width="8" height="6" fill="#fdc700"/>
+  <rect x="24" y="56" width="4" height="4" fill="#fdc700" opacity=".7"/>
+  <rect x="36" y="56" width="4" height="4" fill="#fdc700" opacity=".7"/>
+  <rect x="30" y="58" width="4" height="6" fill="#ff8904"/>
+  <!-- fins -->
+  <rect x="16" y="40" width="8" height="12" fill="#00c95a"/>
+  <rect x="40" y="40" width="8" height="12" fill="#00c95a"/>
+  <!-- hull -->
+  <rect x="24" y="16" width="16" height="36" fill="#00ff6f"/>
+  <rect x="28" y="8" width="8" height="8" fill="#00ff6f"/>
+  <rect x="30" y="4" width="4" height="4" fill="#00ff6f"/>
+  <!-- hull shading -->
+  <rect x="36" y="16" width="4" height="36" fill="#00c95a"/>
+  <!-- porthole -->
+  <rect x="28" y="20" width="8" height="8" fill="#0e1620"/>
+  <rect x="29" y="21" width="6" height="6" fill="#53eafd"/>
+  <rect x="29" y="21" width="3" height="3" fill="#aaf5ff"/>
+  <!-- hatch line -->
+  <rect x="24" y="34" width="16" height="2" fill="#0e1620" opacity=".55"/>
+</svg>
